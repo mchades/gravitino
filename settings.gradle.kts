@@ -8,7 +8,7 @@ plugins {
 
 rootProject.name = "gravitino"
 
-include("api", "common", "core", "meta", "server", "integration-test", "server-common")
+include("api", "common", "core", "meta", "server", "integration-test", "server-common", "bili-onemeta")
 include("catalogs:bundled-catalog")
 include("catalogs:catalog-hive")
 include("catalogs:catalog-lakehouse-iceberg")
