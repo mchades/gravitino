@@ -67,6 +67,7 @@ public class GravitinoServer extends ResourceConfig {
 
   private void initializeRestApi() {
     packages("com.datastrato.gravitino.server.web.rest");
+    packages("com.datastrato.gravitino.bili.onemeta.rest");
     register(
         new AbstractBinder() {
           @Override
