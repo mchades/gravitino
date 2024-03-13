@@ -288,4 +288,19 @@ public interface TableCatalog {
   default boolean purgeTable(NameIdentifier ident) throws UnsupportedOperationException {
     throw new UnsupportedOperationException("purgeTable not supported.");
   }
+
+  /**
+   * Drop a table from the catalog and completely remove its data. Removes both the metadata and the
+   * directory associated with the table completely and skipping trash.
+   *
+   * <p>If the catalog supports to purge a table, this method should be overridden. The default
+   * implementation throws an {@link UnsupportedOperationException}.
+   *
+   * @param ident A table identifier.
+   * @return True if the table was purged, false if the table did not exist.
+   * @throws UnsupportedOperationException If the catalog does not support to purge a table.
+   */
+  default boolean purgeTableOneMeta(NameIdentifier ident) throws UnsupportedOperationException {
+    throw new UnsupportedOperationException("purgeTable not supported.");
+  }
 }

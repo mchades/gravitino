@@ -6,13 +6,13 @@ package com.datastrato.gravitino.bili.onemeta.rest;
 
 import com.codahale.metrics.annotation.ResponseMetered;
 import com.codahale.metrics.annotation.Timed;
-import com.datastrato.gravitino.bili.onemeta.Utils;
 import com.datastrato.gravitino.dto.MetalakeDTO;
 import com.datastrato.gravitino.dto.responses.MetalakeListResponse;
 import com.datastrato.gravitino.dto.util.DTOConverters;
 import com.datastrato.gravitino.meta.BaseMetalake;
 import com.datastrato.gravitino.meta.MetalakeManager;
 import com.datastrato.gravitino.metrics.MetricNames;
+import com.datastrato.gravitino.server.web.Utils;
 import java.util.Arrays;
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;

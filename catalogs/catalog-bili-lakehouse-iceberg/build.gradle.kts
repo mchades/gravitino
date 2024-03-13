@@ -2,7 +2,7 @@
  * Copyright 2023 Datastrato Pvt Ltd.
  * This software is licensed under the Apache License version 2.
  */
-description = "catalog-lakehouse-iceberg"
+description = "catalog-bili-lakehouse-iceberg"
 
 plugins {
   `maven-publish`
@@ -15,7 +15,6 @@ dependencies {
   implementation(project(":common"))
   implementation(project(":core"))
   implementation(project(":server-common"))
-  implementation(libs.bundles.iceberg)
   implementation(libs.bundles.jetty)
   implementation(libs.bundles.jersey)
   implementation(libs.bundles.log4j)
@@ -23,7 +22,6 @@ dependencies {
   implementation(libs.commons.io)
   implementation(libs.commons.lang3)
   implementation(libs.guava)
-  implementation(libs.iceberg.hive.metastore)
   implementation(libs.jackson.annotations)
   implementation(libs.jackson.databind)
   implementation(libs.jackson.datatype.jdk8)
@@ -85,14 +83,14 @@ tasks {
   val copyCatalogLibs by registering(Copy::class) {
     dependsOn(copyDepends, "build")
     from("build/libs_all", "build/libs")
-    into("$rootDir/distribution/package/catalogs/lakehouse-iceberg/libs")
+    into("$rootDir/distribution/package/catalogs/bili-lakehouse-iceberg/libs")
   }
 
   val copyCatalogConfig by registering(Copy::class) {
     from("src/main/resources")
-    into("$rootDir/distribution/package/catalogs/lakehouse-iceberg/conf")
+    into("$rootDir/distribution/package/catalogs/bili-lakehouse-iceberg/conf")
 
-    include("lakehouse-iceberg.conf")
+    include("bili-lakehouse-iceberg.conf")
     include("core-site.xml.template")
     include("hdfs-site.xml.template")
 

@@ -64,6 +64,8 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hadoop.hive.metastore.api.AlreadyExistsException;
@@ -1030,6 +1032,38 @@ public class HiveCatalogOperations implements CatalogOperations, SupportsSchemas
   public boolean purgeTable(NameIdentifier tableIdent) throws UnsupportedOperationException {
     if (isExternalTable(tableIdent)) {
       throw new UnsupportedOperationException("Can't purge a external hive table");
+    } else {
+      return dropHiveTable(tableIdent, true, true);
+    }
+  }
+
+  /**
+   * Purges a table for iceberg sdk
+   *
+   * @param tableIdent The identifier of the table to purge.
+   * @return true if the table is successfully purged; false if the table does not exist.
+   */
+  @Override
+  public boolean purgeTableOneMeta(NameIdentifier tableIdent) {
+    if (isExternalTable(tableIdent)) {
+      // drop meta info
+      boolean resultMeta = dropHiveTable(tableIdent, true, true);
+
+      // drop hdfs file
+      org.apache.hadoop.hive.metastore.api.Table table = loadHiveTable(tableIdent);
+      String location = table.getSd().getLocation();
+      boolean resultHdfs = false;
+      try {
+        LOG.info("begin drop external table {} for location : {}", table.getTableName(), location);
+        FileSystem fs = OneMetaFileSystemHelper.newBuilder().build().getFileSystem();
+        resultHdfs = fs.delete(new Path(location), true);
+      } catch (IOException e) {
+        LOG.error(
+            "fail to drop external table {} for location : {}", table.getTableName(), location);
+        throw new RuntimeException("HDFS delete Error for location : " + location, e);
+      }
+      LOG.info("success drop external table {} for location : {}", table.getTableName(), location);
+      return resultMeta && resultHdfs;
     } else {
       return dropHiveTable(tableIdent, true, true);
     }
