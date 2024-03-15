@@ -16,6 +16,7 @@ dependencies {
   implementation(project(":catalogs:catalog-jdbc-mysql"))
   implementation(project(":catalogs:catalog-jdbc-postgresql"))
   implementation(project(":catalogs:catalog-lakehouse-iceberg"))
+  implementation(project(":catalogs:catalog-bili-lakehouse-iceberg"))
   implementation(project(":core"))
   implementation(libs.slf4j.api)
 }
