@@ -13,6 +13,7 @@ dependencies {
   implementation(project(":common"))
   implementation(project(":server-common"))
   implementation(project(":core"))
+  implementation(project(":server"))
   implementation(libs.jackson.databind)
   implementation(libs.jackson.annotations)
   implementation(libs.jackson.datatype.jdk8)
