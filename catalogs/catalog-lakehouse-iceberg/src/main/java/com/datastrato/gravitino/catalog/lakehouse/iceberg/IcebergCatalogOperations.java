@@ -5,10 +5,6 @@
 package com.datastrato.gravitino.catalog.lakehouse.iceberg;
 
 import static com.datastrato.gravitino.catalog.BaseCatalog.CATALOG_BYPASS_PREFIX;
-import static com.datastrato.gravitino.utils.OneMetaConstants.CORE_SITE_PATH;
-import static com.datastrato.gravitino.utils.OneMetaConstants.HDFS_SITE_PATH;
-import static com.datastrato.gravitino.utils.OneMetaConstants.HIVE_SITE_PATH;
-import static com.datastrato.gravitino.utils.OneMetaConstants.MOUNT_TABLE_PATH;
 
 import com.datastrato.gravitino.NameIdentifier;
 import com.datastrato.gravitino.Namespace;
@@ -48,22 +44,16 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NamespaceNotEmptyException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
-import org.apache.iceberg.hive.HiveCatalog;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.responses.GetNamespaceResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
-import org.apache.iceberg.sdk.HiveCatalogUtils;
-import org.apache.iceberg.sdk.auth.AuthUtils;
-import org.apache.iceberg.sdk.auth.HdfsAuthentication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,7 +75,6 @@ public class IcebergCatalogOperations implements CatalogOperations, SupportsSche
   private final CatalogEntity entity;
 
   private IcebergTableOpsHelper icebergTableOpsHelper;
-  private Configuration icebergSdkConf = null;
 
   /**
    * Constructs a new instance of IcebergCatalogOperations.
@@ -121,7 +110,6 @@ public class IcebergCatalogOperations implements CatalogOperations, SupportsSche
     this.icebergTableOpsHelper = icebergTableOps.createIcebergTableOpsHelper();
     this.icebergTablePropertiesMetadata = new IcebergTablePropertiesMetadata();
     this.icebergSchemaPropertiesMetadata = new IcebergSchemaPropertiesMetadata();
-    icebergSdkConf = createDefaultConfiguration();
   }
 
   /** Closes the Iceberg catalog and releases the associated client pool. */
@@ -561,43 +549,6 @@ public class IcebergCatalogOperations implements CatalogOperations, SupportsSche
       LOG.warn("Iceberg table {} does not exist", tableIdent.name());
       return false;
     }
-  }
-  /**
-   * Purges a table from the Iceberg.
-   *
-   * @param tableIdent The identifier of the table to purge.
-   * @return true if the table is successfully purged; false if the table does not exist.
-   * @throws UnsupportedOperationException If the table type is EXTERNAL_TABLE, it cannot be purged.
-   */
-  @Override
-  public boolean purgeTableOneMeta(NameIdentifier tableIdent) {
-    // use iceberg sdk
-    try {
-      HdfsAuthentication hdfsAuthentication = AuthUtils.createHdfsAuthentication(icebergSdkConf);
-      hdfsAuthentication.doAs(
-          () -> {
-            TableIdentifier identifier = TableIdentifier.of(tableIdent.name(), tableIdent.name());
-            HiveCatalog hiveCatalog = HiveCatalogUtils.createHiveCatalog(icebergSdkConf);
-            hiveCatalog.dropTable(identifier, true);
-            return null;
-          });
-      hdfsAuthentication.close();
-    } catch (org.apache.iceberg.exceptions.NoSuchTableException e) {
-      LOG.warn("Iceberg table {} does not exist", tableIdent.name());
-      return false;
-    } catch (Throwable e) {
-      LOG.info("Purge Iceberg table Error : {}", tableIdent.name());
-    }
-    return true;
-  }
-
-  private Configuration createDefaultConfiguration() {
-    Configuration defaultConf = new Configuration();
-    defaultConf.addResource(new Path(CORE_SITE_PATH));
-    defaultConf.addResource(new Path(HDFS_SITE_PATH));
-    defaultConf.addResource(new Path(HIVE_SITE_PATH));
-    defaultConf.addResource(new Path(MOUNT_TABLE_PATH));
-    return defaultConf;
   }
 
   // TODO. We should figure out a better way to get the current user from servlet container.
