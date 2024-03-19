@@ -161,7 +161,7 @@ components:
           enum:
             - hive
             - lakehouse-iceberg
-            - com-lakehouse-iceberg
+            - bili-lakehouse-iceberg
             - jdbc-mysql
             - jdbc-postgresql
         comment:
@@ -200,7 +200,7 @@ components:
           enum:
             - hive
             - lakehouse-iceberg
-            - com-lakehouse-iceberg
+            - bili-lakehouse-iceberg
             - jdbc-mysql
             - jdbc-postgresql
         comment:
