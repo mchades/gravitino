@@ -27,4 +27,3 @@ include("web")
 include("docs")
 include("integration-test-common")
 include("catalogs:catalog-bili-lakehouse-iceberg")
-

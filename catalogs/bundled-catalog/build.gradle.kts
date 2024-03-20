@@ -81,6 +81,7 @@ tasks.jar {
 tasks.compileJava {
   dependsOn(":catalogs:catalog-jdbc-postgresql:runtimeJars")
   dependsOn(":catalogs:catalog-lakehouse-iceberg:runtimeJars")
+  dependsOn(":catalogs:catalog-bili-lakehouse-iceberg:runtimeJars")
   dependsOn(":catalogs:catalog-jdbc-mysql:runtimeJars")
   dependsOn(":catalogs:catalog-hive:runtimeJars")
   dependsOn(":catalogs:catalog-hadoop:runtimeJars")

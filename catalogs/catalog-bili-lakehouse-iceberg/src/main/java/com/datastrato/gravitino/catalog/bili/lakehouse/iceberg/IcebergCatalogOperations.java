@@ -4,7 +4,7 @@
  */
 package com.datastrato.gravitino.catalog.bili.lakehouse.iceberg;
 
-import static com.datastrato.gravitino.catalog.BaseCatalog.CATALOG_BYPASS_PREFIX;
+import static com.datastrato.gravitino.connector.BaseCatalog.CATALOG_BYPASS_PREFIX;
 import static com.datastrato.gravitino.utils.OneMetaConstants.CORE_SITE_PATH;
 import static com.datastrato.gravitino.utils.OneMetaConstants.HDFS_SITE_PATH;
 import static com.datastrato.gravitino.utils.OneMetaConstants.HIVE_SITE_PATH;
@@ -12,15 +12,15 @@ import static com.datastrato.gravitino.utils.OneMetaConstants.MOUNT_TABLE_PATH;
 
 import com.datastrato.gravitino.NameIdentifier;
 import com.datastrato.gravitino.Namespace;
-import com.datastrato.gravitino.catalog.CatalogOperations;
-import com.datastrato.gravitino.catalog.PropertiesMetadata;
+import com.datastrato.gravitino.connector.CatalogInfo;
+import com.datastrato.gravitino.connector.CatalogOperations;
+import com.datastrato.gravitino.connector.PropertiesMetadata;
 import com.datastrato.gravitino.exceptions.NoSuchCatalogException;
 import com.datastrato.gravitino.exceptions.NoSuchSchemaException;
 import com.datastrato.gravitino.exceptions.NoSuchTableException;
 import com.datastrato.gravitino.exceptions.NonEmptySchemaException;
 import com.datastrato.gravitino.exceptions.SchemaAlreadyExistsException;
 import com.datastrato.gravitino.exceptions.TableAlreadyExistsException;
-import com.datastrato.gravitino.meta.CatalogEntity;
 import com.datastrato.gravitino.rel.Column;
 import com.datastrato.gravitino.rel.SchemaChange;
 import com.datastrato.gravitino.rel.SupportsSchemas;
@@ -57,18 +57,9 @@ public class IcebergCatalogOperations implements CatalogOperations, SupportsSche
 
   private IcebergSchemaPropertiesMetadata icebergSchemaPropertiesMetadata;
 
-  private final CatalogEntity entity;
+  private CatalogInfo info;
 
   private Configuration icebergSdkConf = null;
-
-  /**
-   * Constructs a new instance of IcebergCatalogOperations.
-   *
-   * @param entity The catalog entity associated with this operations instance.
-   */
-  public IcebergCatalogOperations(CatalogEntity entity) {
-    this.entity = entity;
-  }
 
   /**
    * Initializes the Iceberg catalog operations with the provided configuration.
@@ -77,7 +68,8 @@ public class IcebergCatalogOperations implements CatalogOperations, SupportsSche
    * @throws RuntimeException if initialization fails.
    */
   @Override
-  public void initialize(Map<String, String> conf) throws RuntimeException {
+  public void initialize(Map<String, String> conf, CatalogInfo info) throws RuntimeException {
+    this.info = info;
     // Key format like gravitino.bypass.a.b
     Map<String, String> prefixMap = MapUtils.getPrefixMap(conf, CATALOG_BYPASS_PREFIX);
 
@@ -89,9 +81,10 @@ public class IcebergCatalogOperations implements CatalogOperations, SupportsSche
     Map<String, String> resultConf = Maps.newHashMap(prefixMap);
     resultConf.putAll(gravitinoConfig);
 
+    IcebergConfig icebergConfig = new IcebergConfig(resultConf);
+
     this.icebergTablePropertiesMetadata = new IcebergTablePropertiesMetadata();
     this.icebergSchemaPropertiesMetadata = new IcebergSchemaPropertiesMetadata();
-    icebergSdkConf = createDefaultConfiguration();
   }
 
   /** Closes the Iceberg catalog and releases the associated client pool. */
@@ -335,5 +328,11 @@ public class IcebergCatalogOperations implements CatalogOperations, SupportsSche
   public PropertiesMetadata filesetPropertiesMetadata() throws UnsupportedOperationException {
     throw new UnsupportedOperationException(
         "Iceberg catalog doesn't support fileset related operations");
+  }
+
+  @Override
+  public PropertiesMetadata topicPropertiesMetadata() throws UnsupportedOperationException {
+    throw new UnsupportedOperationException(
+        "Iceberg catalog doesn't support topic related operations");
   }
 }

@@ -6,18 +6,21 @@ package com.datastrato.gravitino.catalog.bili.lakehouse.iceberg;
 
 import static com.datastrato.gravitino.catalog.bili.lakehouse.iceberg.IcebergTablePropertiesMetadata.DISTRIBUTION_MODE;
 
-import com.datastrato.gravitino.catalog.TableOperations;
 import com.datastrato.gravitino.catalog.bili.lakehouse.iceberg.converter.ConvertUtil;
 import com.datastrato.gravitino.catalog.bili.lakehouse.iceberg.converter.FromIcebergPartitionSpec;
-import com.datastrato.gravitino.catalog.rel.BaseTable;
+import com.datastrato.gravitino.connector.BaseTable;
+import com.datastrato.gravitino.connector.TableOperations;
 import com.datastrato.gravitino.meta.AuditInfo;
 import com.datastrato.gravitino.rel.expressions.distributions.Distribution;
 import com.datastrato.gravitino.rel.expressions.distributions.Distributions;
 import com.datastrato.gravitino.rel.expressions.transforms.Transform;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import java.util.Map;
 import lombok.Getter;
 import lombok.ToString;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.iceberg.DistributionMode;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.TableMetadata;
@@ -44,6 +47,39 @@ public class IcebergTable extends BaseTable {
   private String location;
 
   private IcebergTable() {}
+
+  /**
+   * Transforms the gravitino distribution to the distribution mode name of the Iceberg table.
+   *
+   * @param distribution The distribution of the table.
+   * @return The distribution mode name of the iceberg table.
+   */
+  @VisibleForTesting
+  String transformDistribution(Distribution distribution) {
+    switch (distribution.strategy()) {
+      case HASH:
+        Preconditions.checkArgument(
+            ArrayUtils.isEmpty(distribution.expressions()),
+            "Iceberg's Distribution Mode.HASH does not support set expressions.");
+        Preconditions.checkArgument(
+            ArrayUtils.isNotEmpty(partitioning),
+            "Iceberg's Distribution Mode.HASH is distributed based on partition, but the partition is empty.");
+        return DistributionMode.HASH.modeName();
+      case RANGE:
+        Preconditions.checkArgument(
+            ArrayUtils.isEmpty(distribution.expressions()),
+            "Iceberg's Distribution Mode.RANGE not support set expressions.");
+        Preconditions.checkArgument(
+            ArrayUtils.isNotEmpty(partitioning) || ArrayUtils.isNotEmpty(sortOrders),
+            "Iceberg's Distribution Mode.RANGE is distributed based on sortOrder or partition, but both are empty.");
+        return DistributionMode.RANGE.modeName();
+      case NONE:
+        return DistributionMode.NONE.modeName();
+      default:
+        throw new IllegalArgumentException(
+            "Iceberg unsupported distribution strategy: " + distribution.strategy());
+    }
+  }
 
   /**
    * Creates a new IcebergTable instance from a Table and a Builder.
@@ -73,7 +109,7 @@ public class IcebergTable extends BaseTable {
     }
     IcebergColumn[] icebergColumns =
         schema.columns().stream().map(ConvertUtil::fromNestedField).toArray(IcebergColumn[]::new);
-    return new Builder()
+    return IcebergTable.builder()
         .withComment(table.property(IcebergTablePropertiesMetadata.COMMENT, null))
         .withLocation(table.location())
         .withProperties(properties)
@@ -93,6 +129,8 @@ public class IcebergTable extends BaseTable {
 
   /** A builder class for constructing IcebergTable instances. */
   public static class Builder extends BaseTableBuilder<Builder, IcebergTable> {
+    /** Creates a new instance of {@link Builder}. */
+    private Builder() {}
 
     private String location;
 
@@ -132,5 +170,13 @@ public class IcebergTable extends BaseTable {
       }
       return icebergTable;
     }
+  }
+  /**
+   * Creates a new instance of {@link Builder}.
+   *
+   * @return The new instance.
+   */
+  public static Builder builder() {
+    return new Builder();
   }
 }

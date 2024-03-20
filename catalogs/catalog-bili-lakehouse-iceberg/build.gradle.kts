@@ -2,13 +2,17 @@
  * Copyright 2023 Datastrato Pvt Ltd.
  * This software is licensed under the Apache License version 2.
  */
-description = "catalog-bili-lakehouse-iceberg"
+description = "bili-catalog-lakehouse-iceberg"
 
 plugins {
   `maven-publish`
   id("java")
   id("idea")
 }
+
+val scalaVersion: String = project.properties["scalaVersion"] as? String ?: extra["defaultScalaVersion"].toString()
+val sparkVersion: String = libs.versions.spark.get()
+val scalaCollectionCompatVersion: String = libs.versions.scala.collection.compat.get()
 
 dependencies {
   implementation(project(":api"))
@@ -22,11 +26,6 @@ dependencies {
   implementation(libs.commons.io)
   implementation(libs.commons.lang3)
   implementation(libs.guava)
-  implementation(libs.jackson.annotations)
-  implementation(libs.jackson.databind)
-  implementation(libs.jackson.datatype.jdk8)
-  implementation(libs.jackson.datatype.jsr310)
-  implementation(libs.sqlite.jdbc)
   implementation("org.apache.iceberg:iceberg-sdk:0.13.2-bili-0.4-SNAPSHOT")
 
   implementation(libs.hive2.metastore) {
@@ -50,10 +49,23 @@ dependencies {
     exclude("org.pentaho") // missing dependency
     exclude("org.slf4j", "slf4j-log4j12")
     exclude("com.zaxxer", "HikariCP")
+    exclude("com.sun.jersey", "jersey-server")
   }
+  implementation(libs.jackson.annotations)
+  implementation(libs.jackson.databind)
+  implementation(libs.jackson.datatype.jdk8)
+  implementation(libs.jackson.datatype.jsr310)
+  implementation(libs.sqlite.jdbc)
 
   annotationProcessor(libs.lombok)
+
   compileOnly(libs.lombok)
+
+  testImplementation(project(":catalogs:catalog-jdbc-common", "testArtifacts"))
+  testImplementation(project(":clients:client-java"))
+  testImplementation(project(":integration-test-common", "testArtifacts"))
+  testImplementation(project(":server"))
+  testImplementation(project(":server-common"))
 
   implementation(libs.hadoop2.common) {
     exclude("com.github.spotbugs")
@@ -62,6 +74,17 @@ dependencies {
   implementation(libs.hadoop2.mapreduce.client.core)
   implementation(libs.metrics.jersey2)
 
+  testImplementation("org.scala-lang.modules:scala-collection-compat_$scalaVersion:$scalaCollectionCompatVersion")
+  testImplementation("org.apache.spark:spark-hive_$scalaVersion:$sparkVersion")
+  testImplementation("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion") {
+    exclude("org.apache.avro")
+    exclude("org.apache.hadoop")
+    exclude("org.apache.zookeeper")
+    exclude("io.dropwizard.metrics")
+    exclude("org.rocksdb")
+  }
+
+  testImplementation(libs.bundles.log4j)
   testImplementation(libs.jersey.test.framework.core) {
     exclude(group = "org.junit.jupiter")
   }
@@ -71,18 +94,27 @@ dependencies {
   testImplementation(libs.junit.jupiter.api)
   testImplementation(libs.junit.jupiter.params)
   testImplementation(libs.mockito.core)
+  // For test TestMultipleJDBCLoad, it was depended on testcontainers.mysql and testcontainers.postgresql)
+  testImplementation(libs.mysql.driver)
+  testImplementation(libs.postgresql.driver)
+
+  testImplementation(libs.slf4j.api)
+  testImplementation(libs.testcontainers)
+  testImplementation(libs.testcontainers.mysql)
+  testImplementation(libs.testcontainers.postgresql)
 
   testRuntimeOnly(libs.junit.jupiter.engine)
 }
 
 tasks {
-  val copyDepends by registering(Copy::class) {
+  val runtimeJars by registering(Copy::class) {
     from(configurations.runtimeClasspath)
-    into("build/libs_all")
+    into("build/libs")
   }
+
   val copyCatalogLibs by registering(Copy::class) {
-    dependsOn(copyDepends, "build")
-    from("build/libs_all", "build/libs")
+    dependsOn("jar", "runtimeJars")
+    from("build/libs")
     into("$rootDir/distribution/package/catalogs/bili-lakehouse-iceberg/libs")
   }
 
@@ -110,4 +142,31 @@ tasks {
   register("copyLibAndConfig", Copy::class) {
     dependsOn(copyCatalogLibs, copyCatalogConfig)
   }
+}
+
+tasks.test {
+  val skipUTs = project.hasProperty("skipTests")
+  if (skipUTs) {
+    // Only run integration tests
+    include("**/integration/**")
+  }
+
+  val skipITs = project.hasProperty("skipITs")
+  if (skipITs) {
+    // Exclude integration tests
+    exclude("**/integration/**")
+  } else {
+    dependsOn(tasks.jar)
+
+    doFirst {
+      environment("GRAVITINO_CI_HIVE_DOCKER_IMAGE", "datastrato/gravitino-ci-hive:0.1.9")
+    }
+
+    val init = project.extra.get("initIntegrationTest") as (Test) -> Unit
+    init(this)
+  }
+}
+
+tasks.clean {
+  delete("spark-warehouse")
 }
