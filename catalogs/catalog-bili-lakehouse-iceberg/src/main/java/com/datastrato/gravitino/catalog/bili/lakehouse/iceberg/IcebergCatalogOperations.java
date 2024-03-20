@@ -36,11 +36,6 @@ import com.google.common.collect.Maps;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.hive.HiveCatalog;
-import org.apache.iceberg.sdk.HiveCatalogUtils;
-import org.apache.iceberg.sdk.auth.AuthUtils;
-import org.apache.iceberg.sdk.auth.HdfsAuthentication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -275,24 +270,7 @@ public class IcebergCatalogOperations implements CatalogOperations, SupportsSche
    */
   @Override
   public boolean purgeTableOneMeta(NameIdentifier tableIdent) {
-    // use iceberg sdk
-    try {
-      HdfsAuthentication hdfsAuthentication = AuthUtils.createHdfsAuthentication(icebergSdkConf);
-      hdfsAuthentication.doAs(
-          () -> {
-            TableIdentifier identifier = TableIdentifier.of(tableIdent.name(), tableIdent.name());
-            HiveCatalog hiveCatalog = HiveCatalogUtils.createHiveCatalog(icebergSdkConf);
-            hiveCatalog.dropTable(identifier, true);
-            return null;
-          });
-      hdfsAuthentication.close();
-    } catch (org.apache.iceberg.exceptions.NoSuchTableException e) {
-      LOG.warn("Iceberg table {} does not exist", tableIdent.name());
-      return false;
-    } catch (Throwable e) {
-      LOG.info("Purge Iceberg table Error : {}", tableIdent.name());
-    }
-    return true;
+    throw new UnsupportedOperationException("purgeTable not supported.");
   }
 
   private Configuration createDefaultConfiguration() {

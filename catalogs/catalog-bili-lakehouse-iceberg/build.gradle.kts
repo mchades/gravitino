@@ -2,7 +2,7 @@
  * Copyright 2023 Datastrato Pvt Ltd.
  * This software is licensed under the Apache License version 2.
  */
-description = "bili-catalog-lakehouse-iceberg"
+description = "catalog-bili-lakehouse-iceberg"
 
 plugins {
   `maven-publish`
@@ -12,6 +12,7 @@ plugins {
 
 val scalaVersion: String = project.properties["scalaVersion"] as? String ?: extra["defaultScalaVersion"].toString()
 val sparkVersion: String = libs.versions.spark.get()
+val icebergVersion: String = libs.versions.iceberg.get()
 val scalaCollectionCompatVersion: String = libs.versions.scala.collection.compat.get()
 
 dependencies {
@@ -19,6 +20,7 @@ dependencies {
   implementation(project(":common"))
   implementation(project(":core"))
   implementation(project(":server-common"))
+  implementation(libs.bundles.iceberg)
   implementation(libs.bundles.jetty)
   implementation(libs.bundles.jersey)
   implementation(libs.bundles.log4j)
@@ -26,8 +28,6 @@ dependencies {
   implementation(libs.commons.io)
   implementation(libs.commons.lang3)
   implementation(libs.guava)
-  implementation("org.apache.iceberg:iceberg-sdk:0.13.2-bili-0.4-SNAPSHOT")
-
   implementation(libs.hive2.metastore) {
     exclude("co.cask.tephra")
     exclude("com.github.spotbugs")
@@ -51,6 +51,7 @@ dependencies {
     exclude("com.zaxxer", "HikariCP")
     exclude("com.sun.jersey", "jersey-server")
   }
+  implementation(libs.iceberg.hive.metastore)
   implementation(libs.jackson.annotations)
   implementation(libs.jackson.databind)
   implementation(libs.jackson.datatype.jdk8)
@@ -75,6 +76,7 @@ dependencies {
   implementation(libs.metrics.jersey2)
 
   testImplementation("org.scala-lang.modules:scala-collection-compat_$scalaVersion:$scalaCollectionCompatVersion")
+  testImplementation("org.apache.iceberg:iceberg-spark-runtime-3.4_$scalaVersion:$icebergVersion")
   testImplementation("org.apache.spark:spark-hive_$scalaVersion:$sparkVersion")
   testImplementation("org.apache.spark:spark-sql_$scalaVersion:$sparkVersion") {
     exclude("org.apache.avro")
