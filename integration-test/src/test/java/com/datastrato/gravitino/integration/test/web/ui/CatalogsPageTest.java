@@ -50,7 +50,7 @@ public class CatalogsPageTest extends AbstractWebIT {
   protected static String hdfsUri = "hdfs://127.0.0.1:9000";
   protected static String mysqlUri = "jdbc:mysql://127.0.0.1";
   protected static String postgresqlUri = "jdbc:postgresql://127.0.0.1";
-  protected static String kafkaUri = "http://127.0.0.1:9092";
+  protected static String kafkaUri = "127.0.0.1:9092";
 
   private static final String WEB_TITLE = "Gravitino";
   private static final String CATALOG_TABLE_TITLE = "Schemas";
@@ -110,7 +110,7 @@ public class CatalogsPageTest extends AbstractWebIT {
     containerSuite.startKafkaContainer();
 
     String address = containerSuite.getKafkaContainer().getContainerIpAddress();
-    kafkaUri = String.format("%s:%s", address, "9092");
+    kafkaUri = String.format("%s:%d", address, 9092);
   }
 
   /**
