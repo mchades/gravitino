@@ -90,7 +90,7 @@ jobs:
         run: ./gradlew publishToMavenLocal -x test -PjdkVersion=${{ matrix.java-version }}
 
       - name: Build with Gradle
-        run: ./gradlew build -PskipITs -PjdkVersion=${{ matrix.java-version }}
+        run: ./gradlew build -PskipITs -PjdkVersion=${{ matrix.java-version }} --profile
 
       - name: Upload unit tests report
         uses: actions/upload-artifact@v3
