@@ -32,6 +32,8 @@ import com.datastrato.gravitino.meta.SchemaVersion;
 import com.datastrato.gravitino.metalake.MetalakeDispatcher;
 import com.datastrato.gravitino.metalake.MetalakeManager;
 import com.datastrato.gravitino.rest.RESTUtils;
+import com.datastrato.gravitino.server.web.filter.JsonMappingExceptionFilter;
+import com.datastrato.gravitino.server.web.filter.JsonParseExceptionFilter;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import java.io.IOException;
@@ -93,6 +95,9 @@ public class TestMetalakeOperations extends JerseyTest {
           }
         });
 
+    resourceConfig.register(JsonParseExceptionFilter.class);
+    resourceConfig.register(JsonMappingExceptionFilter.class);
+
     return resourceConfig;
   }
 
@@ -134,6 +139,7 @@ public class TestMetalakeOperations extends JerseyTest {
   public void testCreateMetalake() {
     MetalakeCreateRequest req =
         new MetalakeCreateRequest("metalake", "comment", ImmutableMap.of("k1", "v1"));
+    System.out.println(req);
     Instant now = Instant.now();
 
     BaseMetalake mockMetalake =
@@ -152,7 +158,10 @@ public class TestMetalakeOperations extends JerseyTest {
         target("/metalakes")
             .request(MediaType.APPLICATION_JSON_TYPE)
             .accept("application/vnd.gravitino.v1+json")
-            .post(Entity.entity(req, MediaType.APPLICATION_JSON_TYPE));
+            .post(Entity.entity("\"names\":\"test\"}", MediaType.APPLICATION_JSON_TYPE));
+    System.out.println(resp.getMediaType());
+    System.out.println(resp.getStatus());
+    System.out.println("lmh" + resp.readEntity(String.class));
 
     Assertions.assertEquals(Response.Status.OK.getStatusCode(), resp.getStatus());
     Assertions.assertEquals(MediaType.APPLICATION_JSON_TYPE, resp.getMediaType());

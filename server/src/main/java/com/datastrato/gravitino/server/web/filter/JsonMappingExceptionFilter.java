@@ -8,7 +8,9 @@ import com.datastrato.gravitino.server.web.Utils;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
+import javax.ws.rs.ext.Provider;
 
+@Provider
 public class JsonMappingExceptionFilter implements ExceptionMapper<JsonMappingException> {
   @Override
   public Response toResponse(JsonMappingException e) {
