@@ -60,9 +60,17 @@ public class DorisContainer extends BaseContainer {
 
   @Override
   public void start() {
+    LOG.info("starting Doris container...");
+    long currentTime = System.currentTimeMillis();
+
     super.start();
     Preconditions.check("Doris container startup failed!", checkContainerStatus(5));
     Preconditions.check("Doris container password change failed!", changePassword());
+
+    LOG.info(
+        "Doris[{}] start successfully in {}ms",
+        container.getDockerImageName(),
+        System.currentTimeMillis() - currentTime);
   }
 
   @Override

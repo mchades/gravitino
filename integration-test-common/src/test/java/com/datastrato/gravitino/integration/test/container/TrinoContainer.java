@@ -59,10 +59,18 @@ public class TrinoContainer extends BaseContainer {
 
   @Override
   public void start() {
+    LOG.info("starting Trino container...");
+    long currentTime = System.currentTimeMillis();
+
     super.start();
 
     Preconditions.check("Initialization Trino JDBC connect failed!", initTrinoJdbcConnection());
     Preconditions.check("Trino container startup failed!", checkContainerStatus(5));
+
+    LOG.info(
+        "Trino container[{}] start successfully in {}ms",
+        container.getDockerImageName(),
+        System.currentTimeMillis() - currentTime);
   }
 
   @Override
