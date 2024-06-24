@@ -62,6 +62,7 @@ jobs:
         java-version: [ 8, 11, 17 ]
         test-mode: [ embedded, deploy ]
         backend: [ jdbcBackend, kvBackend]
+        catalog: [ jdbc-doris, jdbc-mysql, jdbc-postgresql, lakehouse-iceberg, hadoop, hive, kafka ]
     env:
       PLATFORM: ${{ matrix.architecture }}
     steps:
@@ -92,19 +93,16 @@ jobs:
         run: |
           dev/ci/util_free_space.sh
 
-      - name: Backend Integration Test
-        id: integrationTest
-        run: >
-          ./gradlew test --rerun-tasks -PskipTests -PtestMode=${{ matrix.test-mode }} -PjdkVersion=${{ matrix.java-version }} -P${{ matrix.backend }} -PskipWebITs 
-          -x :web:test -x :clients:client-python:test -x :flink-connector:test -x :spark-connector:test -x :spark-connector:spark-common:test 
-          -x :spark-connector:spark-3.3:test -x :spark-connector:spark-3.4:test -x :spark-connector:spark-3.5:test 
-          -x :spark-connector:spark-runtime-3.3:test -x :spark-connector:spark-runtime-3.4:test -x :spark-connector:spark-runtime-3.5:test
+      - name: catalog test
+        id: catalogTest
+        run: |
+          ./gradlew :catalogs:catalog-${{ matrix.catalog }}:test -PskipTests -PtestMode=${{ matrix.test-mode }} -PjdkVersion=${{ matrix.java-version }} -P${{ matrix.backend }}
 
       - name: Upload integrate tests reports
         uses: actions/upload-artifact@v3
-        if: ${{ (failure() && steps.integrationTest.outcome == 'failure') || contains(github.event.pull_request.labels.*.name, 'upload log') }}
+        if: ${{ (failure() && steps.catalogTest.outcome == 'failure') || contains(github.event.pull_request.labels.*.name, 'upload log') }}
         with:
-          name: integrate-test-reports-${{ matrix.java-version }}-${{ matrix.test-mode }}-${{ matrix.backend }}
+          name: integrate-test-reports-${{ matrix.catalog }}-${{ matrix.java-version }}-${{ matrix.test-mode }}-${{ matrix.backend }}
           path: |
             build/reports
             integration-test/build/*.log
