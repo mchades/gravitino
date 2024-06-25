@@ -4,6 +4,37 @@
 #
 version: '3.0'
 services:
+  hive-kerberos:
+    image: datastrato/gravitino-ci-kerberos-hive:0.1.2
+    networks:
+      - trino-net
+    container_name: trino-ci-hive-kerberos
+    environment:
+      - HADOOP_USER_NAME=root
+    entrypoint: /bin/bash /tmp/hive/init.sh
+    volumes:
+      - ./init/hive:/tmp/hive
+      - ../build/trino-ci-container-log/hive-kerberos:/tmp/root
+      - ../build/trino-ci-container-log/hdfs-kerberos:/usr/local/hadoop/logs
+    healthcheck:
+      test: ["CMD", "/tmp/check-status.sh"]
+      interval: 10s
+      timeout: 60s
+      retries: 10
+
+  doris:
+    image: datastrato/gravitino-ci-doris:0.1.4
+    networks:
+      - trino-net
+    container_name: trino-ci-doris
+    volumes:
+      - ../build/trino-ci-container-log/doris/fe:/opt/apache-doris/fe/log
+      - ../build/trino-ci-container-log/doris/be:/opt/apache-doris/be/log
+    healthcheck:
+        test: ["CMD", "mysql", "-uroot", "-P9030", "-h127.0.0.1", "-e", "select 1"]
+        interval: 10s
+        timeout: 60s
+        retries: 10
 
   hive:
     image: datastrato/gravitino-ci-hive:0.1.12

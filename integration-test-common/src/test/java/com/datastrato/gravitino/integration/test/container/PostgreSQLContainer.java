@@ -54,8 +54,15 @@ public class PostgreSQLContainer extends BaseContainer {
 
   @Override
   public void start() {
+    LOG.info("starting Ranger container...");
+    long currentTime = System.currentTimeMillis();
+
     super.start();
     Preconditions.check("PostgreSQL container startup failed!", checkContainerStatus(5));
+    LOG.info(
+        "PostgreSQL container[{}] start successfully in {}ms",
+        container.getDockerImageName(),
+        System.currentTimeMillis() - currentTime);
   }
 
   @Override

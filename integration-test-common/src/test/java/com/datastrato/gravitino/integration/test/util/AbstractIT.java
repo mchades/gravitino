@@ -202,6 +202,7 @@ public class AbstractIT {
     }
 
     serverConfig = new ServerConfig();
+    long currentTime = System.currentTimeMillis();
     if (testMode != null && testMode.equals(ITUtils.EMBEDDED_TEST_MODE)) {
       MiniGravitinoContext context =
           new MiniGravitinoContext(customConfigs, ignoreIcebergRestService);
@@ -234,6 +235,11 @@ public class AbstractIT {
           .pollInterval(1, TimeUnit.SECONDS)
           .until(() -> isHttpServerUp(checkServerUrl));
     }
+
+    LOG.info(
+        "Gravitino {} server start successfully in {}ms",
+        testMode,
+        System.currentTimeMillis() - currentTime);
 
     JettyServerConfig jettyServerConfig =
         JettyServerConfig.fromConfig(serverConfig, WEBSERVER_CONF_PREFIX);

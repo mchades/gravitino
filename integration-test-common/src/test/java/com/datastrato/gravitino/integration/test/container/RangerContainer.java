@@ -58,12 +58,20 @@ public class RangerContainer extends BaseContainer {
 
   @Override
   public void start() {
+    LOG.info("starting Ranger container...");
+    long currentTime = System.currentTimeMillis();
+
     super.start();
 
     rangerUrl = String.format("http://localhost:%s", this.getMappedPort(6080));
     rangerClient = new RangerClient(rangerUrl, authType, username, password, null);
 
     Preconditions.check("Ranger container startup failed!", checkContainerStatus(10));
+
+    LOG.info(
+        "Ranger container[{}] start successfully in {}ms",
+        container.getDockerImageName(),
+        System.currentTimeMillis() - currentTime);
   }
 
   @Override

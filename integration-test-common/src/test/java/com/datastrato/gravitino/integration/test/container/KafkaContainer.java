@@ -47,8 +47,16 @@ public class KafkaContainer extends BaseContainer {
 
   @Override
   public void start() {
+    LOG.info("starting Kafka container...");
+    long currentTime = System.currentTimeMillis();
+
     super.start();
     Preconditions.checkArgument(checkContainerStatus(5), "Kafka container startup failed!");
+
+    LOG.info(
+        "Kafka container[{}] start successfully in {}ms",
+        container.getDockerImageName(),
+        System.currentTimeMillis() - currentTime);
   }
 
   @Override

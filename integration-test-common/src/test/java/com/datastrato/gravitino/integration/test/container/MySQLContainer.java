@@ -56,8 +56,15 @@ public class MySQLContainer extends BaseContainer {
 
   @Override
   public void start() {
+    LOG.info("starting MySQL container...");
+    long currentTime = System.currentTimeMillis();
+
     super.start();
     Preconditions.check("MySQL container startup failed!", checkContainerStatus(5));
+    LOG.info(
+        "MySQL container[{}] start successfully in {}ms",
+        container.getDockerImageName(),
+        System.currentTimeMillis() - currentTime);
   }
 
   @Override

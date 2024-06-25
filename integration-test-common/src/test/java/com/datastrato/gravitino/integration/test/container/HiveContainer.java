@@ -62,8 +62,15 @@ public class HiveContainer extends BaseContainer {
 
   @Override
   public void start() {
+    LOG.info("starting Hive container...");
+    long currentTime = System.currentTimeMillis();
+
     super.start();
     Preconditions.check("Hive container startup failed!", checkContainerStatus(15));
+    LOG.info(
+        "Hive container[{}] start successfully in {}ms",
+        container.getDockerImageName(),
+        System.currentTimeMillis() - currentTime);
   }
 
   @Override

@@ -35,6 +35,9 @@ public class TrinoITContainers implements AutoCloseable {
   }
 
   public void launch(int gravitinoServerPort) throws Exception {
+    LOG.info("starting Trino IT containers...");
+    long currentTime = System.currentTimeMillis();
+
     shutdown();
 
     Map<String, String> env = new HashMap<>();
@@ -56,6 +59,9 @@ public class TrinoITContainers implements AutoCloseable {
     }
 
     resolveServerAddress();
+
+    LOG.info(
+        "Trino IT containers start successfully in {}ms", System.currentTimeMillis() - currentTime);
   }
 
   private void resolveServerAddress() throws Exception {
