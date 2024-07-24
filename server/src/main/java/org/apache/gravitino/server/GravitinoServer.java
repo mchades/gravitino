@@ -94,8 +94,7 @@ public class GravitinoServer extends ResourceConfig {
   }
 
   private void initializeRestApi() {
-    // todo: make this configurable in OSS
-    packages("org.apache.gravitino.server.web.rest", "com.datastrato.gravitino.server.web.rest");
+    packages(serverConfig.get(Configs.REST_API_PACKAGES).split(","));
     boolean enableAuthorization = serverConfig.get(Configs.ENABLE_AUTHORIZATION);
     register(
         new AbstractBinder() {
