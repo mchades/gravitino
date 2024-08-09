@@ -211,7 +211,7 @@ curl -X POST -H "Accept: application/vnd.gravitino.v1+json" \
 
 ```java
 tableCatalog.createTable(
-    NameIdentifier.of("metalake", "hive_catalog", "schema", "table"),
+    NameIdentifier.of("schema", "table"),
     new Column[] {
       Column.of("id", Types.IntegerType.get(), "Id of the user", true, false, null),
       Column.of("name", Types.VarCharType.of(2000), "Name of the user", true, false, null),
@@ -272,7 +272,7 @@ Indexes.of(IndexType.PRIMARY_KEY, "PRIMARY", new String[][]{{"col_1"}, {"col_2"}
 </TabItem>
 </Tabs>
 
-The following is an example of creating a index table:
+The following is an example of creating an index table:
 
 <Tabs groupId='language' queryString>
 <TabItem value="shell" label="Shell">
@@ -328,7 +328,7 @@ curl -X POST -H "Accept: application/vnd.gravitino.v1+json" \
 
 ```java
 tableCatalog.createTable(
-    NameIdentifier.of("metalake", "hive_catalog", "schema", "table"),
+    NameIdentifier.of("schema", "table"),
     new Column[] {
       Column.of("id", Types.IntegerType.get(), "Id of the user", false, true, null),
       Column.of("name", Types.VarCharType.of(1000), "Name of the user", true, false, null),

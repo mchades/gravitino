@@ -17,7 +17,6 @@ specific language governing permissions and limitations
 under the License.
 """
 
-
 from setuptools import find_packages, setup
 
 
@@ -34,19 +33,19 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/apache/gravitino",
-    author="datastrato",
-    author_email="support@datastrato.com",
+    author="gravitino",
+    author_email="dev@gravitino.apache.org",
     python_requires=">=3.8",
     packages=find_packages(exclude=["tests*", "scripts*"]),
     classifiers=[
-        'Development Status :: 3 - Alpha',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: 3.10',
-        'Programming Language :: Python :: 3.11',
-        'Programming Language :: Python :: 3.12',
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
     ],
     install_requires=open("requirements.txt").read(),
     extras_require={

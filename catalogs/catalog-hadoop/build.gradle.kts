@@ -53,6 +53,7 @@ dependencies {
 
   testImplementation(libs.bundles.log4j)
   testImplementation(libs.mockito.core)
+  testImplementation(libs.mockito.inline)
   testImplementation(libs.mysql.driver)
   testImplementation(libs.junit.jupiter.api)
   testImplementation(libs.junit.jupiter.params)
@@ -101,6 +102,15 @@ tasks {
 }
 
 tasks.test {
+  doFirst {
+    val testMode = project.properties["testMode"] as? String ?: "embedded"
+    if (testMode == "deploy") {
+      environment("GRAVITINO_HOME", project.rootDir.path + "/distribution/package")
+    } else if (testMode == "embedded") {
+      environment("GRAVITINO_HOME", project.rootDir.path)
+    }
+  }
+
   val skipUTs = project.hasProperty("skipTests")
   if (skipUTs) {
     // Only run integration tests
@@ -115,8 +125,8 @@ tasks.test {
     dependsOn(tasks.jar)
 
     doFirst {
-      environment("GRAVITINO_CI_HIVE_DOCKER_IMAGE", "datastrato/gravitino-ci-hive:0.1.12")
-      environment("GRAVITINO_CI_KERBEROS_HIVE_DOCKER_IMAGE", "datastrato/gravitino-ci-kerberos-hive:0.1.2")
+      environment("GRAVITINO_CI_HIVE_DOCKER_IMAGE", "datastrato/gravitino-ci-hive:0.1.13")
+      environment("GRAVITINO_CI_KERBEROS_HIVE_DOCKER_IMAGE", "datastrato/gravitino-ci-kerberos-hive:0.1.5")
     }
 
     val init = project.extra.get("initIntegrationTest") as (Test) -> Unit

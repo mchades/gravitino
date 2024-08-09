@@ -27,8 +27,10 @@ from gravitino.client.gravitino_version import GravitinoVersion
 from gravitino.dto.version_dto import VersionDTO
 from gravitino.dto.responses.metalake_response import MetalakeResponse
 from gravitino.dto.responses.version_response import VersionResponse
+from gravitino.exceptions.handlers.metalake_error_handler import METALAKE_ERROR_HANDLER
+from gravitino.exceptions.handlers.rest_error_handler import REST_ERROR_HANDLER
 from gravitino.utils import HTTPClient
-from gravitino.exceptions.gravitino_runtime_exception import GravitinoRuntimeException
+from gravitino.exceptions.base import GravitinoRuntimeException
 from gravitino.constants.version import VERSION_INI, Version
 from gravitino.name_identifier import NameIdentifier
 
@@ -75,7 +77,8 @@ class GravitinoClientBase:
 
         self.check_metalake_name(name)
         response = self._rest_client.get(
-            GravitinoClientBase.API_METALAKES_IDENTIFIER_PATH + name
+            GravitinoClientBase.API_METALAKES_IDENTIFIER_PATH + name,
+            error_handler=METALAKE_ERROR_HANDLER,
         )
         metalake_response = MetalakeResponse.from_json(
             response.body, infer_missing=True
@@ -126,7 +129,7 @@ class GravitinoClientBase:
         Returns:
             A GravitinoVersion instance representing the version of the Gravitino API.
         """
-        resp = self._rest_client.get("api/version")
+        resp = self._rest_client.get("api/version", error_handler=REST_ERROR_HANDLER)
         version_response = VersionResponse.from_json(resp.body, infer_missing=True)
         version_response.validate()
 

@@ -207,7 +207,7 @@ Each list in the lists must have the same length. The values in each list must c
 </Tabs>
 
 You can add a partition to a partitioned table by sending a `POST` request to the `/api/metalakes/{metalake_name}/catalogs/{catalog_name}/schemas/{schema_name}/tables/{partitioned_table_name}/partitions` endpoint or by using the Gravitino Java client.
-The following is an example of adding a identity partition to a Hive partitioned table:
+The following is an example of adding an identity partition to a Hive partitioned table:
 
 <Tabs groupId='language' queryString>
 <TabItem value="shell" label="Shell">
@@ -255,9 +255,9 @@ GravitinoClient gravitinoClient = GravitinoClient
 // Assume that you have a partitioned table named "metalake.catalog.schema.table".
 Partition addedPartition = 
     gravitinoClient
-        .loadCatalog(NameIdentifier.of("metalake", "catalog"))
+        .loadCatalog("catalog")
         .asTableCatalog()
-        .loadTable(NameIdentifier.of("metalake", "catalog", "schema", "table"))
+        .loadTable(NameIdentifier.of("schema", "table"))
         .supportPartitions()
         .addPartition(
             Partitions.identity(
@@ -300,9 +300,9 @@ GravitinoClient gravitinoClient = GravitinoClient
 // Assume that you have a partitioned table named "metalake.catalog.schema.table".
 Partition Partition = 
     gravitinoClient
-        .loadCatalog(NameIdentifier.of("metalake", "catalog"))
+        .loadCatalog("catalog")
         .asTableCatalog()
-        .loadTable(NameIdentifier.of("metalake", "catalog", "schema", "table"))
+        .loadTable(NameIdentifier.of("schema", "table"))
         .supportPartitions()
         .getPartition("partition_name");
 ```
@@ -313,7 +313,7 @@ Partition Partition =
 ### List partition names under a partitioned table
 
 You can list all partition names under a partitioned table by sending a `GET` request to the `/api/metalakes/{metalake_name}/catalogs/{catalog_name}/schemas/{schema_name}/tables/{partitioned_table_name}/partitions` endpoint or by using the Gravitino Java client.
-The following is an example of listing all partition names under a partitioned table:
+The following is an example of listing all the partition names under a partitioned table:
 
 <Tabs groupId='language' queryString>
 <TabItem value="shell" label="Shell">
@@ -336,9 +336,9 @@ GravitinoClient gravitinoClient = GravitinoClient
 // Assume that you have a partitioned table named "metalake.catalog.schema.table".
 String[] partitionNames = 
     gravitinoClient
-        .loadCatalog(NameIdentifier.of("metalake", "catalog"))
+        .loadCatalog("catalog")
         .asTableCatalog()
-        .loadTable(NameIdentifier.of("metalake", "catalog", "schema", "table"))
+        .loadTable(NameIdentifier.of("schema", "table"))
         .supportPartitions()
         .listPartitionNames();
 ```
@@ -349,7 +349,7 @@ String[] partitionNames =
 ### List partitions under a partitioned table
 
 If you want to get more detailed information about the partitions under a partitioned table, you can list all partitions under a partitioned table by sending a `GET` request to the `/api/metalakes/{metalake_name}/catalogs/{catalog_name}/schemas/{schema_name}/tables/{partitioned_table_name}/partitions` endpoint or by using the Gravitino Java client.
-The following is an example of listing all partitions under a partitioned table:
+The following is an example of listing all the partitions under a partitioned table:
 
 <Tabs groupId='language' queryString>
 <TabItem value="shell" label="Shell">
@@ -367,9 +367,9 @@ http://localhost:8090/api/metalakes/metalake/catalogs/catalog/schemas/schema/tab
 // Assume that you have a partitioned table named "metalake.catalog.schema.table".
 Partition[] partitions =
         gravitinoClient
-            .loadCatalog(NameIdentifier.of("metalake", "catalog"))
+            .loadCatalog("catalog")
             .asTableCatalog()
-            .loadTable(NameIdentifier.of("metalake", "catalog", "schema", "table"))
+            .loadTable(NameIdentifier.of("schema", "table"))
             .supportPartitions()
             .listPartitions();
 ```
@@ -407,9 +407,9 @@ GravitinoClient gravitinoClient = GravitinoClient
 // Assume that you have a partitioned table named "metalake.catalog.schema.table".
 Partition Partition = 
     gravitinoClient
-        .loadCatalog(NameIdentifier.of("metalake", "catalog"))
+        .loadCatalog("catalog")
         .asTableCatalog()
-        .loadTable(NameIdentifier.of("metalake", "catalog", "schema", "table"))
+        .loadTable(NameIdentifier.of("schema", "table"))
         .supportPartitions()
         .dropPartition("partition_name");
 ```

@@ -74,8 +74,7 @@ Map<String, String> hiveProperties = ImmutableMap.<String, String>builder()
         .put("metastore.uris", "thrift://localhost:9083")
         .build();
 
-Catalog catalog = gravitinoClient.createCatalog(
-    NameIdentifier.of("metalake", "catalog"),
+Catalog catalog = gravitinoClient.createCatalog("catalog",
     Type.RELATIONAL,
     "hive", // provider, We support hive, jdbc-mysql, jdbc-postgresql, lakehouse-iceberg, etc.
     "This is a hive catalog",
@@ -114,7 +113,7 @@ curl -X GET -H "Accept: application/vnd.gravitino.v1+json" \
 ```java
 // ...
 // Assuming you have created a metalake named `metalake` and a catalog named `catalog`
-Catalog catalog = gravitinoClient.loadCatalog(NameIdentifier.of("metalake", "catalog"));
+Catalog catalog = gravitinoClient.loadCatalog("catalog");
 // ...
 ```
 
@@ -151,7 +150,7 @@ curl -X PUT -H "Accept: application/vnd.gravitino.v1+json" \
 ```java
 // ...
 // Assuming you have created a metalake named `metalake` and a catalog named `catalog`
-Catalog catalog = gravitinoClient.alterCatalog(NameIdentifier.of("metalake", "catalog"),
+Catalog catalog = gravitinoClient.alterCatalog("catalog",
     CatalogChange.rename("alter_catalog"), CatalogChange.updateComment("new comment"));
 // ...
 ```
@@ -167,6 +166,15 @@ Currently, Gravitino supports the following changes to a catalog:
 | Update comment         | `{"@type":"updateComment","newComment":"new_comment"}`       | `CatalogChange.updateComment("new_comment")`   |
 | Set a property         | `{"@type":"setProperty","property":"key1","value":"value1"}` | `CatalogChange.setProperty("key1", "value1")`  |
 | Remove a property      | `{"@type":"removeProperty","property":"key1"}`               | `CatalogChange.removeProperty("key1")`         |
+
+:::warning
+
+Most catalog-altering operations are generally safe. However, if you want to change the catalog's URI, you should proceed with caution. Changing the URI may point to a different cluster, rendering the metadata stored in Gravitino unusable.
+For instance, if the old URI and the new URI point to different clusters that both have a database named db1, changing the URI might cause the old metadata, such as audit information, to be used when accessing db1, which is undesirable.
+
+Therefore, do not change the catalog's URI unless you fully understand the consequences of such a modification.
+
+:::
 
 ### Drop a catalog
 
@@ -187,7 +195,7 @@ http://localhost:8090/api/metalakes/metalake/catalogs/catalog
 ```java
 // ...
 // Assuming you have created a metalake named `metalake` and a catalog named `catalog`
-gravitinoClient.dropCatalog(NameIdentifier.of("metalake", "catalog"));
+gravitinoClient.dropCatalog("catalog");
 // ...
 
 ```
@@ -201,7 +209,7 @@ Dropping a catalog only removes metadata about the catalog, schemas, and tables 
 
 ### List all catalogs in a metalake
 
-You can list all catalogs under a metalake by sending a `GET` request to the `/api/metalakes/{metalake_name}/catalogs` endpoint or just use the Gravitino Java client. The following is an example of listing all catalogs in
+You can list all catalogs under a metalake by sending a `GET` request to the `/api/metalakes/{metalake_name}/catalogs` endpoint or just use the Gravitino Java client. The following is an example of listing all the catalogs in
 a metalake:
 
 <Tabs groupId="language" queryString>
@@ -219,7 +227,7 @@ http://localhost:8090/api/metalakes/metalake/catalogs
 ```java
 // ...
 // Assuming you have just created a metalake named `metalake`
-NameIdentifier[] catalogsIdents = gravitinoClient.listCatalogs(Namespace.ofCatalog("metalake"));
+String[] catalogNames = gravitinoClient.listCatalogs();
 // ...
 ```
 
@@ -228,7 +236,7 @@ NameIdentifier[] catalogsIdents = gravitinoClient.listCatalogs(Namespace.ofCatal
 
 ### List all catalogs' information in a metalake
 
-You can list all catalogs' information under a metalake by sending a `GET` request to the `/api/metalakes/{metalake_name}/catalogs?details=true` endpoint or just use the Gravitino Java client. The following is an example of listing all catalogs' information in a metalake:
+You can list all catalogs' information under a metalake by sending a `GET` request to the `/api/metalakes/{metalake_name}/catalogs?details=true` endpoint or just use the Gravitino Java client. The following is an example of listing all the catalogs' information in a metalake:
 
 <Tabs groupId="language" queryString>
 <TabItem value="shell" label="Shell">
@@ -245,7 +253,7 @@ http://localhost:8090/api/metalakes/metalake/catalogs?details=true
 ```java
 // ...
 // Assuming you have just created a metalake named `metalake`
-Catalog[] catalogsInfos = gravitinoMetalake.listCatalogsInfo(Namespace.ofCatalog("metalake"));
+Catalog[] catalogsInfos = gravitinoMetaLake.listCatalogsInfo();
 // ...
 ```
 
@@ -282,14 +290,13 @@ curl -X POST -H "Accept: application/vnd.gravitino.v1+json" \
 
 ```java
 // Assuming you have just created a Hive catalog named `hive_catalog`
-Catalog catalog = gravitinoClient.loadCatalog(NameIdentifier.of("metalake", "hive_catalog"));
+Catalog catalog = gravitinoClient.loadCatalog("hive_catalog");
 
 SupportsSchemas supportsSchemas = catalog.asSchemas();
 
 Map<String, String> schemaProperties = ImmutableMap.<String, String>builder()
     .build();
-Schema schema = supportsSchemas.createSchema(
-    NameIdentifier.of("metalake", "hive_catalog", "schema"),
+Schema schema = supportsSchemas.createSchema("schema",
     "This is a schema",
     schemaProperties
 );
@@ -301,8 +308,8 @@ Schema schema = supportsSchemas.createSchema(
 
 ```python
 gravitino_client: GravitinoClient = GravitinoClient(uri="http://127.0.0.1:8090", metalake_name="metalake")
-catalog: Catalog = gravitino_client.load_catalog(ident=NameIdentifier.of("metalake", "hive_catalog"))
-catalog.as_schemas().create_schema(ident=NameIdentifier.of("metalake", "hive_catalog", "schema"),
+catalog: Catalog = gravitino_client.load_catalog(name="hive_catalog")
+catalog.as_schemas().create_schema(name="schema",
                                    comment="This is a schema",
                                    properties={})
 ```
@@ -339,9 +346,9 @@ http://localhost:8090/api/metalakes/metalake/catalogs/catalog/schemas/schema
 ```java
 // ...
 // Assuming you have just created a Hive catalog named `hive_catalog`
-Catalog catalog = gravitinoClient.loadCatalog(NameIdentifier.of("metalake", "hive_catalog"));
+Catalog catalog = gravitinoClient.loadCatalog("hive_catalog");
 SupportsSchemas supportsSchemas = catalog.asSchemas();
-Schema schema = supportsSchemas.loadSchema(NameIdentifier.of("metalake", "hive_catalog", "schema"));
+Schema schema = supportsSchemas.loadSchema("schema");
 // ...
 ```
 
@@ -350,8 +357,8 @@ Schema schema = supportsSchemas.loadSchema(NameIdentifier.of("metalake", "hive_c
 
 ```python
 gravitino_client: GravitinoClient = GravitinoClient(uri="http://127.0.0.1:8090", metalake_name="metalake")
-catalog: Catalog = gravitino_client.load_catalog(ident=NameIdentifier.of("metalake", "hive_catalog"))
-schema: Schema = catalog.as_schemas().load_schema(ident=NameIdentifier.of("metalake", "hive_catalog", "schema"))
+catalog: Catalog = gravitino_client.load_catalog(name="hive_catalog")
+schema: Schema = catalog.as_schemas().load_schema(name="schema")
 ```
 
 </TabItem>
@@ -386,11 +393,11 @@ curl -X PUT -H "Accept: application/vnd.gravitino.v1+json" \
 ```java
 // ...
 // Assuming you have just created a Hive catalog named `hive_catalog`
-Catalog catalog = gravitinoClient.loadCatalog(NameIdentifier.of("metalake", "hive_catalog"));
+Catalog catalog = gravitinoClient.loadCatalog("hive_catalog");
 
 SupportsSchemas supportsSchemas = catalog.asSchemas();
 
-Schema schema = supportsSchemas.alterSchema(NameIdentifier.of("metalake", "hive_catalog", "schema"),
+Schema schema = supportsSchemas.alterSchema("schema",
     SchemaChange.removeProperty("key1"),
     SchemaChange.setProperty("key2", "value2"));
 // ...
@@ -401,13 +408,13 @@ Schema schema = supportsSchemas.alterSchema(NameIdentifier.of("metalake", "hive_
 
 ```python
 gravitino_client: GravitinoClient = GravitinoClient(uri="http://127.0.0.1:8090", metalake_name="metalake")
-catalog: Catalog = gravitino_client.load_catalog(ident=NameIdentifier.of("metalake", "hive_catalog"))
+catalog: Catalog = gravitino_client.load_catalog(name="hive_catalog")
 
 changes = (
     SchemaChange.remove_property("schema_properties_key1"),
-    SchemaChange.set_property("schema_properties_key2", "schema_propertie_new_value"),
+    SchemaChange.set_property("schema_properties_key2", "schema_properties_new_value"),
 )
-schema_new: Schema = catalog.as_schemas().alter_schema(NameIdentifier.of("metalake", "hive_catalog", "schema"), 
+schema_new: Schema = catalog.as_schemas().alter_schema("schema", 
                                                        *changes)
 ```
 
@@ -440,11 +447,11 @@ http://localhost:8090/api/metalakes/metalake/catalogs/catalog/schemas/schema?cas
 ```java
 // ...
 // Assuming you have just created a Hive catalog named `hive_catalog`
-Catalog catalog = gravitinoClient.loadCatalog(NameIdentifier.of("metalake", "hive_catalog"));
+Catalog catalog = gravitinoClient.loadCatalog("hive_catalog");
 
 SupportsSchemas supportsSchemas = catalog.asSchemas();
 // cascade can be true or false
-supportsSchemas.dropSchema(NameIdentifier.of("metalake", "hive_catalog", "schema"), true);
+supportsSchemas.dropSchema("schema", true);
 ```
 
 </TabItem>
@@ -452,9 +459,9 @@ supportsSchemas.dropSchema(NameIdentifier.of("metalake", "hive_catalog", "schema
 
 ```python
 gravitino_client: GravitinoClient = GravitinoClient(uri="http://127.0.0.1:8090", metalake_name="metalake")
-catalog: Catalog = gravitino_client.load_catalog(ident=NameIdentifier.of("metalake", "hive_catalog"))
+catalog: Catalog = gravitino_client.load_catalog(name="hive_catalog")
 
-catalog.as_schemas().drop_schema(NameIdentifier.of("metalake", "hive_catalog", "schema"), cascade=True)
+catalog.as_schemas().drop_schema("schema", cascade=True)
 ```
 
 </TabItem>
@@ -465,7 +472,7 @@ Some catalogs may not support cascading deletion of a schema, please refer to th
 
 ### List all schemas under a catalog
 
-You can alter all schemas under a catalog by sending a `GET` request to the `/api/metalakes/{metalake_name}/catalogs/{catalog_name}/schemas` endpoint or just use the Gravitino Java client. The following is an example of list all schema
+You can list all schemas under a catalog by sending a `GET` request to the `/api/metalakes/{metalake_name}/catalogs/{catalog_name}/schemas` endpoint or just use the Gravitino Java client. The following is an example of listing all the schemas
     in a catalog:
 
 
@@ -483,10 +490,10 @@ curl -X GET -H "Accept: application/vnd.gravitino.v1+json" \
 ```java
 // ...
 // Assuming you have just created a Hive catalog named `hive_catalog`
-Catalog catalog = gravitinoClient.loadCatalog(NameIdentifier.of("metalake", "hive_catalog"));
+Catalog catalog = gravitinoClient.loadCatalog("hive_catalog");
 
 SupportsSchemas supportsSchemas = catalog.asSchemas();
-NameIdentifier[] schemas = supportsSchemas.listSchemas(Namespace.ofSchema("metalake", "hive_catalog"));
+String[] schemas = supportsSchemas.listSchemas();
 ```
 
 </TabItem>
@@ -494,9 +501,9 @@ NameIdentifier[] schemas = supportsSchemas.listSchemas(Namespace.ofSchema("metal
 
 ```python
 gravitino_client: GravitinoClient = GravitinoClient(uri="http://127.0.0.1:8090", metalake_name="metalake")
-catalog: Catalog = gravitino_client.load_catalog(ident=NameIdentifier.of("metalake", "hive_catalog"))
+catalog: Catalog = gravitino_client.load_catalog(name="hive_catalog")
 
-schema_list: List[NameIdentifier] = catalog.as_schemas().list_schemas(Namespace.of_schema("metalake", "hive_catalog"))
+schema_list: List[NameIdentifier] = catalog.as_schemas().list_schemas()
 ```
 
 </TabItem>
@@ -645,7 +652,7 @@ curl -X POST -H "Accept: application/vnd.gravitino.v1+json" \
 
 ```java
 // Assuming you have just created a Hive catalog named `hive_catalog`
-Catalog catalog = gravitinoClient.loadCatalog(NameIdentifier.of("metalake", "hive_catalog"));
+Catalog catalog = gravitinoClient.loadCatalog("hive_catalog");
 
 TableCatalog tableCatalog = catalog.asTableCatalog();
 
@@ -657,7 +664,7 @@ Map<String, String> tablePropertiesMap = ImmutableMap.<String, String>builder()
         .build();
 
 tableCatalog.createTable(
-  NameIdentifier.of("metalake", "hive_catalog", "schema", "example_table"),
+  NameIdentifier.of("schema", "example_table"),
   new Column[] {
     Column.of("id", Types.IntegerType.get(), "id column comment", false, true, Literals.integerLiteral(-1)),
     Column.of("name", Types.VarCharType.of(500), "name column comment", true, false, Literals.NULL),
@@ -725,8 +732,9 @@ The following types that Gravitino supports:
 | Map                        | `Types.MapType.of(keyType, valueType)`                                   | `{"type": "map", "keyType": type JSON, "valueType": type JSON, "valueContainsNull": JSON Boolean}`                                   | Map type, indicate a map of key-value pairs                                                      |
 | Struct                     | `Types.StructType.of([Types.StructType.Field.of(name, type, nullable)])` | `{"type": "struct", "fields": [JSON StructField, {"name": string, "type": type JSON, "nullable": JSON Boolean, "comment": string}]}` | Struct type, indicate a struct of fields                                                         |
 | Union                      | `Types.UnionType.of([type1, type2, ...])`                                | `{"type": "union", "types": [type JSON, ...]}`                                                                                       | Union type, indicates a union of types                                                           |
+| UUID                       | `Types.UUIDType.get()`                                                   | `uuid`                              | UUID type, indicates a universally unique identifier |
 
-The related java doc is [here](pathname:///docs/0.5.1/api/java/com/datastrato/gravitino/rel/types/Type.html).
+The related java doc is [here](pathname:///docs/0.5.1/api/java/org/apache/gravitino/rel/types/Type.html).
 
 ##### External type
 
@@ -828,10 +836,10 @@ In addition to the basic settings, Gravitino supports the following features:
 
 | Feature             | Description                                                                                                                                                                                                                                                                                    | Java doc                                                                                                                 |
 |---------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
-| Table partitioning  | Equal to `PARTITION BY` in Apache Hive, It is a partitioning strategy that is used to split a table into parts based on partition keys. Some table engine may not support this feature                                                                                                         | [Partition](pathname:///docs/0.5.1/api/java/com/datastrato/gravitino/dto/rel/partitioning/Partitioning.html)             |
-| Table bucketing     | Equal to `CLUSTERED BY` in Apache Hive, Bucketing a.k.a (Clustering) is a technique to split the data into more manageable files/parts, (By specifying the number of buckets to create). The value of the bucketing column will be hashed by a user-defined number into buckets.               | [Distribution](pathname:///docs/0.5.1/api/java/com/datastrato/gravitino/rel/expressions/distributions/Distribution.html) |
-| Table sort ordering | Equal to `SORTED BY` in Apache Hive, sort ordering is a method to sort the data in specific ways such as by a column or a function, and then store table data. it will highly improve the query performance under certain scenarios.                                                           | [SortOrder](pathname:///docs/0.5.1/api/java/com/datastrato/gravitino/rel/expressions/sorts/SortOrder.html)               |
-| Table indexes       | Equal to `KEY/INDEX` in MySQL , unique key enforces uniqueness of values in one or more columns within a table. It ensures that no two rows have identical values in specified columns, thereby facilitating data integrity and enabling efficient data retrieval and manipulation operations. | [Index](pathname:///docs/0.5.1/api/java/com/datastrato/gravitino/rel/indexes/Index.html)                                 |
+| Table partitioning  | Equal to `PARTITION BY` in Apache Hive, It is a partitioning strategy that is used to split a table into parts based on partition keys. Some table engine may not support this feature                                                                                                         | [Partition](pathname:///docs/0.5.1/api/java/org/apache/gravitino/dto/rel/partitioning/Partitioning.html)             |
+| Table bucketing     | Equal to `CLUSTERED BY` in Apache Hive, Bucketing a.k.a (Clustering) is a technique to split the data into more manageable files/parts, (By specifying the number of buckets to create). The value of the bucketing column will be hashed by a user-defined number into buckets.               | [Distribution](pathname:///docs/0.5.1/api/java/org/apache/gravitino/rel/expressions/distributions/Distribution.html) |
+| Table sort ordering | Equal to `SORTED BY` in Apache Hive, sort ordering is a method to sort the data in specific ways such as by a column or a function, and then store table data. it will highly improve the query performance under certain scenarios.                                                           | [SortOrder](pathname:///docs/0.5.1/api/java/org/apache/gravitino/rel/expressions/sorts/SortOrder.html)               |
+| Table indexes       | Equal to `KEY/INDEX` in MySQL , unique key enforces uniqueness of values in one or more columns within a table. It ensures that no two rows have identical values in specified columns, thereby facilitating data integrity and enabling efficient data retrieval and manipulation operations. | [Index](pathname:///docs/0.5.1/api/java/org/apache/gravitino/rel/indexes/Index.html)                                 |
 
 For more information, please see the related document on [partitioning, bucketing, sorting, and indexes](table-partitioning-bucketing-sort-order-indexes.md).
 
@@ -858,10 +866,10 @@ http://localhost:8090/api/metalakes/metalake/catalogs/catalog/schemas/schema/tab
 ```java
 // ...
 // Assuming you have just created a Hive catalog named `hive_catalog`
-Catalog catalog = gravitinoClient.loadCatalog(NameIdentifier.of("metalake", "hive_catalog"));
+Catalog catalog = gravitinoClient.loadCatalog("hive_catalog");
 
 TableCatalog tableCatalog = catalog.asTableCatalog();
-tableCatalog.loadTable(NameIdentifier.of("metalake", "hive_catalog", "schema", "table"));
+tableCatalog.loadTable(NameIdentifier.of("schema", "table"));
 // ...
 ```
 
@@ -902,11 +910,11 @@ curl -X PUT -H "Accept: application/vnd.gravitino.v1+json" \
 ```java
 // ...
 // Assuming you have just created a Hive catalog named `hive_catalog`
-Catalog catalog = gravitinoClient.loadCatalog(NameIdentifier.of("metalake", "hive_catalog"));
+Catalog catalog = gravitinoClient.loadCatalog("hive_catalog");
 
 TableCatalog tableCatalog = catalog.asTableCatalog();
 
-Table t = tableCatalog.alterTable(NameIdentifier.of("metalake", "hive_catalog", "schema", "table"),
+Table t = tableCatalog.alterTable(NameIdentifier.of("schema", "table"),
     TableChange.rename("table_renamed"), TableChange.updateComment("xxx"));
 // ...
 ```
@@ -952,15 +960,15 @@ http://localhost:8090/api/metalakes/metalake/catalogs/catalog/schemas/schema/tab
 ```java
 // ...
 // Assuming you have just created a Hive catalog named `hive_catalog`
-Catalog catalog = gravitinoClient.loadCatalog(NameIdentifier.of("metalake", "hive_catalog"));
+Catalog catalog = gravitinoClient.loadCatalog("hive_catalog");
 
 TableCatalog tableCatalog = catalog.asTableCatalog();
 
 // Drop a table
-tableCatalog.dropTable(NameIdentifier.of("metalake", "hive_catalog", "schema", "table"));
+tableCatalog.dropTable(NameIdentifier.of("schema", "table"));
 
 // Purge a table
-tableCatalog.purgeTable(NameIdentifier.of("metalake", "hive_catalog", "schema", "table"));
+tableCatalog.purgeTable(NameIdentifier.of("schema", "table"));
 // ...
 ```
 
@@ -976,7 +984,7 @@ Hive catalog and lakehouse-iceberg catalog supports `purgeTable` while jdbc-mysq
 
 ### List all tables under a schema
 
-You can list all tables in a schema by sending a `GET` request to the `/api/metalakes/{metalake_name}/catalogs/{catalog_name}/schemas/{schema_name}/tables` endpoint or just use the Gravitino Java client. The following is an example of list all tables in a schema:
+You can list all tables in a schema by sending a `GET` request to the `/api/metalakes/{metalake_name}/catalogs/{catalog_name}/schemas/{schema_name}/tables` endpoint or just use the Gravitino Java client. The following is an example of listing all the tables in a schema:
 
 <Tabs groupId='language' queryString>
 <TabItem value="shell" label="Shell">
@@ -993,11 +1001,11 @@ http://localhost:8090/api/metalakes/metalake/catalogs/catalog/schemas/schema/tab
 ```java
 // ...
 // Assuming you have just created a Hive catalog named `hive_catalog`
-Catalog catalog = gravitinoClient.loadCatalog(NameIdentifier.of("metalake", "hive_catalog"));
+Catalog catalog = gravitinoClient.loadCatalog("hive_catalog");
 
 TableCatalog tableCatalog = catalog.asTableCatalog();
 NameIdentifier[] identifiers =
-    tableCatalog.listTables(Namespace.ofTable("metalake", "hive_catalog", "schema"));
+    tableCatalog.listTables(Namespace.of("schema"));
 // ...
 ```
 

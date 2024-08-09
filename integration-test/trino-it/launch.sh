@@ -23,6 +23,7 @@ cd "$(dirname "$0")"
 
 playground_dir="$(dirname "${BASH_SOURCE-$0}")"
 playground_dir="$(cd "${playground_dir}">/dev/null; pwd)"
+services=$@
 isExist=`which docker`
 if [ ! $isExist ]
 then
@@ -32,48 +33,61 @@ fi
 
 cd ${playground_dir}
 
+checkTrinoService() {
+  local service_name=$1
+  local max_attempts=300
+  local attempts=0
+
+  while true; do
+#      docker compose exec -T trino trino --execute "SELECT 1" >/dev/null 2>&1 && {
+#          break;
+#      }
+
+#      num_container=$(docker ps --format '{{.Names}}' | grep trino-ci | wc -l)
+#      if [ "$num_container" -lt 4 ]; then
+#          echo "ERROR: Trino-ci containers start failed."
+#          exit 0
+#      fi
+
+      service_status=$(docker compose ps $service_name | grep "$service_name")
+      if echo "$service_status" | grep -q "healthy"; then
+              echo "$service_name service is healthy."
+              break;
+          else
+              echo "$service_name service is not healthy($attempts/$max_attempts)."
+      fi
+
+      if [ "$attempts" -ge "$max_attempts" ]; then
+          echo "ERROR: Trino service did not start within the $max_attempts time."
+          exit 1
+      fi
+
+     ((attempts++))
+      sleep 1
+  done
+
+  echo "Trino service start successfully"
+}
+
 # create log dir
-mkdir -p ../build/trino-ci-container-log
+LOG_DIR=../build/trino-ci-container-log
+rm -fr $LOG_DIR
+mkdir -p $LOG_DIR
 
-docker compose up -d
+docker compose up -d $services
 
-if [ -n "$GRAVITINO_LOG_PATH" ]; then
-    LOG_PATH=$GRAVITINO_LOG_PATH
-else
-    LOG_PATH=../build/integration-test.log
-fi
+LOG_PATH=$LOG_DIR/trino-ci-docker-compose.log
 
 echo "The docker compose log is: $LOG_PATH"
 
-nohup docker compose logs -f  -t >> $LOG_PATH &
+nohup docker compose logs -f  -t > $LOG_PATH &
 
-max_attempts=300
-attempts=0
-
-while true; do
-    docker compose exec -T trino trino --execute "SELECT 1" >/dev/null 2>&1 && {
-        break;
-    }
-
-    num_container=$(docker ps --format '{{.Names}}' | grep trino-ci | wc -l)
-    if [ "$num_container" -lt 4 ]; then
-        echo "ERROR: Trino-ci containers start failed."
-        exit 0
-    fi
-
-    if [ "$attempts" -ge "$max_attempts" ]; then
-        echo "ERROR: Trino service did not start within the $max_attempts time."
-        exit 1
-    fi
-
-   ((attempts++))
-    sleep 1
+for service in $services; do
+  checkTrinoService $service
 done
-
 
 echo "All docker compose service is now available."
 
 # change the hive container's logs directory permission
 docker exec trino-ci-hive chown -R `id -u`:`id -g` /tmp/root
 docker exec trino-ci-hive chown -R `id -u`:`id -g` /usr/local/hadoop/logs
-

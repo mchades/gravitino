@@ -37,6 +37,7 @@ jobs:
               - gradle/**
               - integration-test/**
               - integration-test-common/**
+              - iceberg/**
               - meta/**
               - server/**
               - server-common/**
@@ -61,9 +62,10 @@ jobs:
         architecture: [linux/amd64]
         java-version: [ 8, 11, 17 ]
         test-mode: [ embedded, deploy ]
-        backend: [ jdbcBackend, kvBackend]
+        backend: [ mysql, h2]
     env:
       PLATFORM: ${{ matrix.architecture }}
+      ACTIVE_CI: true
     steps:
       - uses: actions/checkout@v3
 
@@ -97,6 +99,10 @@ jobs:
           -x :spark-connector:spark-3.3:test -x :spark-connector:spark-3.4:test -x :spark-connector:spark-3.5:test 
           -x :spark-connector:spark-runtime-3.3:test -x :spark-connector:spark-runtime-3.4:test -x :spark-connector:spark-runtime-3.5:test
 
+      - name: Setup debug Github Action
+        if: ${{ contains(github.event.pull_request.labels.*.name, 'debug action') }}
+        uses: csexton/debugger-action@master
+
       - name: Upload integrate tests reports
         uses: actions/upload-artifact@v3
         if: ${{ (failure() && steps.integrationTest.outcome == 'failure') || contains(github.event.pull_request.labels.*.name, 'upload log') }}
@@ -104,12 +110,13 @@ jobs:
           name: integrate-test-reports-${{ matrix.java-version }}-${{ matrix.test-mode }}-${{ matrix.backend }}
           path: |
             build/reports
+            iceberg/iceberg-rest-server/build/*.log
             integration-test/build/*.log
             integration-test/build/*.tar
             integration-test/build/trino-ci-container-log/hive/*.*
             integration-test/build/trino-ci-container-log/hdfs/*.*
-            distribution/package/logs/gravitino-server.out
-            distribution/package/logs/gravitino-server.log
+            distribution/package/logs/*.out
+            distribution/package/logs/*.log
             catalogs/**/*.log
             catalogs/**/*.tar
             distribution/**/*.log

@@ -26,7 +26,7 @@ import docker
 from docker import types as tp
 from docker.errors import NotFound
 
-from gravitino.exceptions.gravitino_runtime_exception import GravitinoRuntimeException
+from gravitino.exceptions.base import GravitinoRuntimeException
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +99,7 @@ class HDFSContainer:
                 image=image_name,
                 name=self._container_name,
                 detach=True,
-                environment={"HADOOP_USER_NAME": "datastrato"},
+                environment={"HADOOP_USER_NAME": "anonymous"},
                 network=self._network_name,
             )
         asyncio.run(check_hdfs_container_status(self._container))

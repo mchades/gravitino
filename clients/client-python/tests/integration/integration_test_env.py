@@ -26,7 +26,7 @@ import sys
 
 import requests
 
-from gravitino.exceptions.gravitino_runtime_exception import GravitinoRuntimeException
+from gravitino.exceptions.base import GravitinoRuntimeException
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +149,7 @@ class IntegrationTestEnv(unittest.TestCase):
 
         # Restart Gravitino Server
         env_vars = os.environ.copy()
-        env_vars["HADOOP_USER_NAME"] = "datastrato"
+        env_vars["HADOOP_USER_NAME"] = "anonymous"
         result = subprocess.run(
             [gravitino_startup_script, "restart"],
             env=env_vars,
