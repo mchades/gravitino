@@ -65,6 +65,7 @@ jobs:
         backend: [ mysql, h2]
     env:
       PLATFORM: ${{ matrix.architecture }}
+      ACTIVE_CI: true
     steps:
       - uses: actions/checkout@v3
 
@@ -97,6 +98,10 @@ jobs:
           -x :web:test -x :clients:client-python:test -x :flink-connector:test -x :spark-connector:test -x :spark-connector:spark-common:test 
           -x :spark-connector:spark-3.3:test -x :spark-connector:spark-3.4:test -x :spark-connector:spark-3.5:test 
           -x :spark-connector:spark-runtime-3.3:test -x :spark-connector:spark-runtime-3.4:test -x :spark-connector:spark-runtime-3.5:test
+
+      - name: Setup debug Github Action
+        if: ${{ contains(github.event.pull_request.labels.*.name, 'debug action') }}
+        uses: csexton/debugger-action@master
 
       - name: Upload integrate tests reports
         uses: actions/upload-artifact@v3
