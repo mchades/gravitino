@@ -49,7 +49,7 @@ checkTrinoService() {
 #          exit 0
 #      fi
 
-      service_status=$(docker-compose ps $service_name | grep "$service_name")
+      service_status=$(docker compose ps $service_name | grep "$service_name")
       if echo "$service_status" | grep -q "healthy"; then
               echo "$service_name service is healthy."
               break;
