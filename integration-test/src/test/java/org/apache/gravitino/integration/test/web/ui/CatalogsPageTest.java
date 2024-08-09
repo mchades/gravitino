@@ -19,6 +19,9 @@
 
 package org.apache.gravitino.integration.test.web.ui;
 
+import static org.apache.gravitino.integration.test.util.AbstractIT.Service.HIVE;
+import static org.apache.gravitino.integration.test.util.AbstractIT.Service.MYSQL;
+import static org.apache.gravitino.integration.test.util.AbstractIT.Service.POSTGRESQL;
 import static org.apache.gravitino.rel.expressions.transforms.Transforms.identity;
 
 import com.google.common.collect.Maps;
@@ -67,7 +70,6 @@ public class CatalogsPageTest extends AbstractWebIT {
   protected static TrinoITContainers trinoITContainers;
   protected static GravitinoAdminClient gravitinoClient;
   protected static String gravitinoUri = "http://127.0.0.1:8090";
-  protected static String trinoUri = "http://127.0.0.1:8080";
   protected static String hiveMetastoreUri = "thrift://127.0.0.1:9083";
   protected static String hdfsUri = "hdfs://127.0.0.1:9000";
   protected static String mysqlUri = "jdbc:mysql://127.0.0.1";
@@ -122,9 +124,8 @@ public class CatalogsPageTest extends AbstractWebIT {
     gravitinoUri = String.format("http://127.0.0.1:%d", AbstractIT.getGravitinoServerPort());
 
     trinoITContainers = ContainerSuite.getTrinoITContainers();
-    trinoITContainers.launch(AbstractIT.getGravitinoServerPort());
+    trinoITContainers.launch(HIVE, MYSQL, POSTGRESQL);
 
-    trinoUri = trinoITContainers.getTrinoUri();
     hiveMetastoreUri = trinoITContainers.getHiveMetastoreUri();
     hdfsUri = trinoITContainers.getHdfsUri();
     mysqlUri = trinoITContainers.getMysqlUri();

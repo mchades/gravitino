@@ -25,6 +25,7 @@ import com.google.common.collect.ImmutableSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.apache.gravitino.integration.test.util.AbstractIT;
 import org.apache.ranger.RangerClient;
 import org.apache.ranger.RangerServiceException;
 import org.rnorth.ducttape.Preconditions;
@@ -77,12 +78,26 @@ public class RangerContainer extends BaseContainer {
 
   @Override
   public void start() {
-    super.start();
+    if (activeCI) {
+      ContainerSuite.getTrinoITContainers().launch(AbstractIT.Service.RANGER);
+      rangerUrl = format("http://%s:%d", getContainerIpAddress(), RANGER_SERVER_PORT);
+      rangerClient = new RangerClient(rangerUrl, authType, username, password, null);
+    } else {
+      super.start();
 
-    rangerUrl = String.format("http://localhost:%s", this.getMappedPort(RANGER_SERVER_PORT));
-    rangerClient = new RangerClient(rangerUrl, authType, username, password, null);
+      rangerUrl = String.format("http://localhost:%s", this.getMappedPort(RANGER_SERVER_PORT));
+      rangerClient = new RangerClient(rangerUrl, authType, username, password, null);
 
-    Preconditions.check("Ranger container startup failed!", checkContainerStatus(10));
+      Preconditions.check("Ranger container startup failed!", checkContainerStatus(10));
+    }
+  }
+
+  @Override
+  public String getContainerIpAddress() {
+    if (activeCI) {
+      return ContainerSuite.getTrinoITContainers().getServiceIpAddress(AbstractIT.Service.RANGER);
+    }
+    return super.getContainerIpAddress();
   }
 
   @Override

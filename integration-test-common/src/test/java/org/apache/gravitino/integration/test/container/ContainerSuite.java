@@ -45,6 +45,7 @@ import org.testcontainers.containers.Network;
 public class ContainerSuite implements Closeable {
   public static final Logger LOG = LoggerFactory.getLogger(ContainerSuite.class);
   private static volatile ContainerSuite instance = null;
+  private static volatile boolean initialized = false;
 
   // The subnet must match the configuration in
   // `dev/docker/tools/mac-docker-connector.conf`
@@ -87,11 +88,16 @@ public class ContainerSuite implements Closeable {
     }
   }
 
+  public static boolean initialized() {
+    return initialized;
+  }
+
   public static ContainerSuite getInstance() {
     if (instance == null) {
       synchronized (ContainerSuite.class) {
         if (instance == null) {
           init();
+          initialized = true;
           instance = new ContainerSuite();
         }
       }
