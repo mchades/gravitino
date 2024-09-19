@@ -822,7 +822,7 @@ public class DTOConverters {
    */
   public static SortOrder[] fromDTOs(SortOrderDTO[] sortOrderDTO) {
     if (ArrayUtils.isEmpty(sortOrderDTO)) {
-      return new SortOrder[0];
+      return SortOrders.NONE;
     }
 
     return Arrays.stream(sortOrderDTO).map(DTOConverters::fromDTO).toArray(SortOrder[]::new);
@@ -836,7 +836,7 @@ public class DTOConverters {
    */
   public static Transform[] fromDTOs(Partitioning[] partitioning) {
     if (ArrayUtils.isEmpty(partitioning)) {
-      return new Transform[0];
+      return Transforms.EMPTY_TRANSFORM;
     }
     return Arrays.stream(partitioning).map(DTOConverters::fromDTO).toArray(Transform[]::new);
   }
