@@ -36,7 +36,8 @@ import org.mockito.Mockito;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 
-@Disabled("Gravitino will not support KV entity store since 0.6.0, so we disable this test.")
+@Disabled(
+    "Gravitino will not support KV entity store since 0.6.0-incubating, so we disable this test.")
 public class TestRocksDBKvBackend {
 
   private KvBackend getKvBackEnd() throws IOException {

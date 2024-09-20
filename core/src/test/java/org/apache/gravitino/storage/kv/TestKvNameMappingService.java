@@ -41,7 +41,8 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-@Disabled("Gravitino will not support KV entity store since 0.6.0, so we disable this test.")
+@Disabled(
+    "Gravitino will not support KV entity store since 0.6.0-incubating, so we disable this test.")
 public class TestKvNameMappingService {
   private Config getConfig() throws IOException {
     File baseDir = new File(System.getProperty("java.io.tmpdir"));

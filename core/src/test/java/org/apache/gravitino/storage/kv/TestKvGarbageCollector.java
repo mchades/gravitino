@@ -64,7 +64,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 @SuppressWarnings("DefaultCharset")
-@Disabled("Gravitino will not support KV entity store since 0.6.0, so we disable this test.")
+@Disabled(
+    "Gravitino will not support KV entity store since 0.6.0-incubating, so we disable this test.")
 class TestKvGarbageCollector {
   public Config getConfig() throws IOException {
     Config config = Mockito.mock(Config.class);
