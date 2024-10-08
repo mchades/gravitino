@@ -111,7 +111,7 @@ public class TagIT extends AbstractIT {
   public static void tearDown() {
     relationalCatalog.asTableCatalog().dropTable(NameIdentifier.of(schema.name(), table.name()));
     relationalCatalog.asSchemas().dropSchema(schema.name(), true);
-    metalake.dropCatalog(relationalCatalog.name());
+    metalake.dropCatalog(relationalCatalog.name(), true);
     client.dropMetalake(metalakeName);
 
     if (client != null) {

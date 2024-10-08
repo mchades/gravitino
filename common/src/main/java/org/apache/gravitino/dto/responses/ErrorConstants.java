@@ -45,6 +45,12 @@ public class ErrorConstants {
   /** Error codes for connect to catalog failed. */
   public static final int CONNECTION_FAILED_CODE = 1007;
 
+  /** Error codes for operation on a no in use entity. */
+  public static final int NON_IN_USE_ENTITY_CODE = 1008;
+
+  /** Error codes for drop an in use entity. */
+  public static final int ENTITY_IN_USE_CODE = 1009;
+
   /** Error codes for invalid state. */
   public static final int UNKNOWN_ERROR_CODE = 1100;
 

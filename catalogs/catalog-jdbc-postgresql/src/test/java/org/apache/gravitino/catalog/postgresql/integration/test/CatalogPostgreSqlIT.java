@@ -128,6 +128,7 @@ public class CatalogPostgreSqlIT extends AbstractIT {
     for (String schemaName : schemaNames) {
       catalog.asSchemas().dropSchema(schemaName, true);
     }
+    metalake.deactivateCatalog(catalogName);
     metalake.dropCatalog(catalogName);
     client.dropMetalake(metalakeName);
     postgreSqlService.close();

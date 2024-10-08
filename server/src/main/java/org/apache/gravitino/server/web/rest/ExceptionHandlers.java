@@ -25,11 +25,13 @@ import org.apache.gravitino.dto.responses.ErrorResponse;
 import org.apache.gravitino.exceptions.AlreadyExistsException;
 import org.apache.gravitino.exceptions.CatalogAlreadyExistsException;
 import org.apache.gravitino.exceptions.ConnectionFailedException;
+import org.apache.gravitino.exceptions.EntityInUseException;
 import org.apache.gravitino.exceptions.FilesetAlreadyExistsException;
 import org.apache.gravitino.exceptions.GroupAlreadyExistsException;
 import org.apache.gravitino.exceptions.MetalakeAlreadyExistsException;
 import org.apache.gravitino.exceptions.NoSuchMetalakeException;
 import org.apache.gravitino.exceptions.NonEmptySchemaException;
+import org.apache.gravitino.exceptions.NonInUseEntityException;
 import org.apache.gravitino.exceptions.NotFoundException;
 import org.apache.gravitino.exceptions.PartitionAlreadyExistsException;
 import org.apache.gravitino.exceptions.RoleAlreadyExistsException;
@@ -177,6 +179,9 @@ public class ExceptionHandlers {
       } else if (e instanceof UnsupportedOperationException) {
         return Utils.unsupportedOperation(errorMsg, e);
 
+      } else if (e instanceof NonInUseEntityException) {
+        return Utils.nonInUse(errorMsg, e);
+
       } else {
         return super.handle(op, partition, table, e);
       }
@@ -211,6 +216,9 @@ public class ExceptionHandlers {
 
       } else if (e instanceof UnsupportedOperationException) {
         return Utils.unsupportedOperation(errorMsg, e);
+
+      } else if (e instanceof NonInUseEntityException) {
+        return Utils.nonInUse(errorMsg, e);
 
       } else {
         return super.handle(op, table, schema, e);
@@ -250,6 +258,9 @@ public class ExceptionHandlers {
       } else if (e instanceof UnsupportedOperationException) {
         return Utils.unsupportedOperation(errorMsg, e);
 
+      } else if (e instanceof NonInUseEntityException) {
+        return Utils.nonInUse(errorMsg, e);
+
       } else {
         return super.handle(op, schema, catalog, e);
       }
@@ -284,6 +295,12 @@ public class ExceptionHandlers {
 
       } else if (e instanceof CatalogAlreadyExistsException) {
         return Utils.alreadyExists(errorMsg, e);
+
+      } else if (e instanceof NonInUseEntityException) {
+        return Utils.nonInUse(errorMsg, e);
+
+      } else if (e instanceof EntityInUseException) {
+        return Utils.inUse(errorMsg, e);
 
       } else {
         return super.handle(op, catalog, metalake, e);
@@ -346,6 +363,9 @@ public class ExceptionHandlers {
 
       } else if (e instanceof FilesetAlreadyExistsException) {
         return Utils.alreadyExists(errorMsg, e);
+
+      } else if (e instanceof NonInUseEntityException) {
+        return Utils.nonInUse(errorMsg, e);
 
       } else {
         return super.handle(op, fileset, schema, e);

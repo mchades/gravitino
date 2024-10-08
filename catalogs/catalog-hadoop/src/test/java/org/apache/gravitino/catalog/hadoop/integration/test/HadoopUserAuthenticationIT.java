@@ -655,7 +655,7 @@ public class HadoopUserAuthenticationIT extends AbstractIT {
 
     catalog.asFilesetCatalog().dropFileset(NameIdentifier.of(SCHEMA_NAME, filesetName));
     catalog.asSchemas().dropSchema(SCHEMA_NAME, true);
-    gravitinoMetalake.dropCatalog(catalogName);
+    gravitinoMetalake.dropCatalog(catalogName, true);
     adminClient.dropMetalake(metalakeName);
   }
 }

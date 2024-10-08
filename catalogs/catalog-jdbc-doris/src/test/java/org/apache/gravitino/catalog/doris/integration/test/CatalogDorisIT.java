@@ -128,7 +128,7 @@ public class CatalogDorisIT extends AbstractIT {
   @AfterAll
   public void stop() {
     clearTableAndSchema();
-    metalake.dropCatalog(catalogName);
+    metalake.dropCatalog(catalogName, true);
     AbstractIT.client.dropMetalake(metalakeName);
   }
 

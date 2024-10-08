@@ -189,10 +189,7 @@ public class RangerHiveE2EIT extends AbstractIT {
                 catalog.asSchemas().dropSchema(schema, true);
               }));
       Arrays.stream(metalake.listCatalogs())
-          .forEach(
-              (catalogName -> {
-                metalake.dropCatalog(catalogName);
-              }));
+          .forEach((catalogName -> metalake.dropCatalog(catalogName, true)));
       client.dropMetalake(metalakeName);
     }
     if (sparkSession != null) {

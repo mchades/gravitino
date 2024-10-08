@@ -90,7 +90,7 @@ public class GravitinoVirtualFileSystemIT extends AbstractIT {
   public static void tearDown() throws IOException {
     Catalog catalog = metalake.loadCatalog(catalogName);
     catalog.asSchemas().dropSchema(schemaName, true);
-    metalake.dropCatalog(catalogName);
+    metalake.dropCatalog(catalogName, true);
     client.dropMetalake(metalakeName);
 
     if (client != null) {

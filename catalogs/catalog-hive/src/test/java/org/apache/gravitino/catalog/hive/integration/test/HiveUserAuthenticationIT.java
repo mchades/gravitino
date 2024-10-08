@@ -271,7 +271,7 @@ public class HiveUserAuthenticationIT extends AbstractIT {
     Assertions.assertFalse(catalog.asSchemas().schemaExists(SCHEMA_NAME));
 
     // Drop catalog
-    Assertions.assertTrue(gravitinoMetalake.dropCatalog(CATALOG_NAME));
+    Assertions.assertTrue(gravitinoMetalake.dropCatalog(CATALOG_NAME, true));
   }
 
   @AfterAll

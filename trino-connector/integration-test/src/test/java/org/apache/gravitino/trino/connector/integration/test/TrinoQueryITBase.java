@@ -229,6 +229,7 @@ public class TrinoQueryITBase {
               LOG.info("Drop schema \"{}.{}\".{}", metalakeName, catalogName, schema);
             });
 
+    metalake.deactivateCatalog(catalogName);
     metalake.dropCatalog(catalogName);
     LOG.info("Drop catalog \"{}.{}\"", metalakeName, catalogName);
   }

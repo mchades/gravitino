@@ -129,6 +129,7 @@ public abstract class CatalogPaimonBaseIT extends AbstractIT {
   @AfterAll
   public void stop() {
     clearTableAndSchema();
+    metalake.deactivateCatalog(catalogName);
     metalake.dropCatalog(catalogName);
     client.dropMetalake(metalakeName);
     if (spark != null) {

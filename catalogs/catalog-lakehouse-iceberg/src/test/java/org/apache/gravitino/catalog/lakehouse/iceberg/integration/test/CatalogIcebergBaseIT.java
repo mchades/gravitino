@@ -138,6 +138,7 @@ public abstract class CatalogIcebergBaseIT extends AbstractIT {
   public void stop() throws Exception {
     try {
       clearTableAndSchema();
+      metalake.deactivateCatalog(catalogName);
       metalake.dropCatalog(catalogName);
       client.dropMetalake(metalakeName);
     } finally {
