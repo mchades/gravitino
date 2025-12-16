@@ -35,6 +35,7 @@ import org.apache.gravitino.catalog.FilesetDispatcher;
 import org.apache.gravitino.catalog.FilesetNormalizeDispatcher;
 import org.apache.gravitino.catalog.FilesetOperationDispatcher;
 import org.apache.gravitino.catalog.FunctionDispatcher;
+import org.apache.gravitino.catalog.InMemoryFunctionDispatcher;
 import org.apache.gravitino.catalog.ModelDispatcher;
 import org.apache.gravitino.catalog.ModelNormalizeDispatcher;
 import org.apache.gravitino.catalog.ModelOperationDispatcher;
@@ -50,7 +51,6 @@ import org.apache.gravitino.catalog.TableOperationDispatcher;
 import org.apache.gravitino.catalog.TopicDispatcher;
 import org.apache.gravitino.catalog.TopicNormalizeDispatcher;
 import org.apache.gravitino.catalog.TopicOperationDispatcher;
-import org.apache.gravitino.catalog.UnsupportedFunctionDispatcher;
 import org.apache.gravitino.credential.CredentialOperationDispatcher;
 import org.apache.gravitino.hook.AccessControlHookDispatcher;
 import org.apache.gravitino.hook.CatalogHookDispatcher;
@@ -562,7 +562,7 @@ public class GravitinoEnv {
         new TableNormalizeDispatcher(tableHookDispatcher, catalogManager);
     this.tableDispatcher = new TableEventDispatcher(eventBus, tableNormalizeDispatcher);
     // TODO: Wire actual function dispatcher implementation once function management is available.
-    this.functionDispatcher = new UnsupportedFunctionDispatcher();
+    this.functionDispatcher = new InMemoryFunctionDispatcher();
 
     // TODO: We can install hooks when we need, we only supports ownership post hook,
     //  partition doesn't have ownership, so we don't need it now.
