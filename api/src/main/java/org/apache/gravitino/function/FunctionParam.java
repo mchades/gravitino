@@ -18,6 +18,8 @@
  */
 package org.apache.gravitino.function;
 
+import static org.apache.gravitino.rel.Column.DEFAULT_VALUE_NOT_SET;
+
 import org.apache.gravitino.annotation.Evolving;
 import org.apache.gravitino.rel.expressions.Expression;
 import org.apache.gravitino.rel.types.Type;
@@ -25,14 +27,6 @@ import org.apache.gravitino.rel.types.Type;
 /** Represents a function parameter. */
 @Evolving
 public interface FunctionParam {
-
-  /**
-   * A default value that indicates the default value is not set.
-   *
-   * <p>This constant can be used in {@link #defaultValue()} to signal the default value is not
-   * provided by users.
-   */
-  Expression DEFAULT_VALUE_NOT_SET = () -> Expression.EMPTY_EXPRESSION;
 
   /**
    * @return The name of the parameter.
@@ -53,7 +47,7 @@ public interface FunctionParam {
 
   /**
    * @return The default value of the parameter if provided, otherwise {@link
-   *     #DEFAULT_VALUE_NOT_SET}.
+   *     org.apache.gravitino.rel.Column#DEFAULT_VALUE_NOT_SET}.
    */
   default Expression defaultValue() {
     return DEFAULT_VALUE_NOT_SET;

@@ -18,6 +18,7 @@
  */
 package org.apache.gravitino.catalog;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -41,6 +42,7 @@ import org.apache.gravitino.function.FunctionSignature;
 import org.apache.gravitino.function.FunctionType;
 import org.apache.gravitino.meta.AuditInfo;
 import org.apache.gravitino.rel.types.Type;
+import org.apache.gravitino.utils.PrincipalUtils;
 
 /**
  * An in-memory {@link FunctionDispatcher} that stores function metadata in memory. This is a
@@ -64,7 +66,7 @@ public class InMemoryFunctionDispatcher implements FunctionDispatcher {
     Map<FunctionSignature, NavigableMap<Integer, StoredFunction>> bySignature =
         functions.get(ident);
     if (bySignature == null || bySignature.isEmpty()) {
-      throw new NoSuchFunctionException("Function not found: " + ident);
+      throw new NoSuchFunctionException("Function not found: %s", ident);
     }
     return latestFunctions(bySignature.values());
   }
@@ -75,7 +77,7 @@ public class InMemoryFunctionDispatcher implements FunctionDispatcher {
     Map<FunctionSignature, NavigableMap<Integer, StoredFunction>> bySignature =
         functions.get(ident);
     if (bySignature == null || bySignature.isEmpty()) {
-      throw new NoSuchFunctionException("Function not found: " + ident);
+      throw new NoSuchFunctionException("Function not found: %s", ident);
     }
 
     Function[] matched =
@@ -85,7 +87,7 @@ public class InMemoryFunctionDispatcher implements FunctionDispatcher {
             .toArray(Function[]::new);
     if (matched.length == 0) {
       throw new NoSuchFunctionVersionException(
-          "Function version " + version + " not found for " + ident);
+          "Function version %s not found for %s", version, ident);
     }
     return matched;
   }
@@ -143,7 +145,7 @@ public class InMemoryFunctionDispatcher implements FunctionDispatcher {
     Map<FunctionSignature, NavigableMap<Integer, StoredFunction>> bySignature =
         functions.get(ident);
     if (bySignature == null || bySignature.isEmpty()) {
-      throw new NoSuchFunctionException("Function not found: " + ident);
+      throw new NoSuchFunctionException("Function not found: %s", ident);
     }
 
     FunctionSignature targetSignature = resolveTargetSignature(bySignature, changes);
@@ -169,7 +171,16 @@ public class InMemoryFunctionDispatcher implements FunctionDispatcher {
     }
 
     StoredFunction updated =
-        latest.newVersion(latest.version() + 1, comment, impls, latest.auditInfo());
+        latest.newVersion(
+            latest.version() + 1,
+            comment,
+            impls,
+            AuditInfo.builder()
+                .withCreator(latest.auditInfo().creator())
+                .withCreateTime(latest.auditInfo().createTime())
+                .withLastModifier(PrincipalUtils.getCurrentPrincipal().getName())
+                .withLastModifiedTime(Instant.now())
+                .build());
     versions.put(updated.version(), updated);
     return updated;
   }
@@ -207,7 +218,7 @@ public class InMemoryFunctionDispatcher implements FunctionDispatcher {
         functions.computeIfAbsent(ident, ignored -> new HashMap<>());
     if (bySignature.containsKey(signature)) {
       throw new FunctionAlreadyExistsException(
-          "Function already exists with signature: " + signature);
+          "Function already exists with signature: %s", signature);
     }
 
     StoredFunction stored =
@@ -220,7 +231,10 @@ public class InMemoryFunctionDispatcher implements FunctionDispatcher {
             returnColumns,
             functionImpls,
             1,
-            AuditInfo.EMPTY);
+            AuditInfo.builder()
+                .withCreator(PrincipalUtils.getCurrentPrincipal().getName())
+                .withCreateTime(Instant.now())
+                .build());
     NavigableMap<Integer, StoredFunction> versions = new TreeMap<>();
     versions.put(stored.version(), stored);
     bySignature.put(signature, versions);
@@ -251,7 +265,7 @@ public class InMemoryFunctionDispatcher implements FunctionDispatcher {
     }
 
     if (!bySignature.containsKey(target)) {
-      throw new NoSuchFunctionException("Function not found for signature: " + target);
+      throw new NoSuchFunctionException("Function not found for signature: %s", target);
     }
 
     return target;

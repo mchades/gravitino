@@ -21,6 +21,7 @@ package org.apache.gravitino.function;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import java.util.Objects;
+import org.apache.gravitino.rel.Column;
 import org.apache.gravitino.rel.expressions.Expression;
 import org.apache.gravitino.rel.types.Type;
 
@@ -37,7 +38,7 @@ public class FunctionParams {
    * @return A {@link FunctionParam} instance.
    */
   public static FunctionParam of(String name, Type dataType) {
-    return of(name, dataType, null, FunctionParam.DEFAULT_VALUE_NOT_SET);
+    return of(name, dataType, null, Column.DEFAULT_VALUE_NOT_SET);
   }
 
   /**
@@ -49,7 +50,7 @@ public class FunctionParams {
    * @return A {@link FunctionParam} instance.
    */
   public static FunctionParam of(String name, Type dataType, String comment) {
-    return of(name, dataType, comment, FunctionParam.DEFAULT_VALUE_NOT_SET);
+    return of(name, dataType, comment, Column.DEFAULT_VALUE_NOT_SET);
   }
 
   /**
@@ -77,7 +78,7 @@ public class FunctionParams {
       this.name = name;
       this.dataType = Preconditions.checkNotNull(dataType, "Parameter data type cannot be null");
       this.comment = comment;
-      this.defaultValue = defaultValue == null ? FunctionParam.DEFAULT_VALUE_NOT_SET : defaultValue;
+      this.defaultValue = defaultValue == null ? Column.DEFAULT_VALUE_NOT_SET : defaultValue;
     }
 
     @Override
