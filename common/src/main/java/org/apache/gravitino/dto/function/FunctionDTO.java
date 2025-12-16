@@ -93,10 +93,21 @@ public class FunctionDTO implements Function {
     this.audit = audit;
   }
 
+  /**
+   * Creates a builder for {@link FunctionDTO}.
+   *
+   * @return Builder instance.
+   */
   public static Builder builder() {
     return new Builder();
   }
 
+  /**
+   * Converts a {@link Function} to {@link FunctionDTO}.
+   *
+   * @param function Source function.
+   * @return Converted DTO.
+   */
   public static FunctionDTO fromFunction(Function function) {
     FunctionImpl[] impls = function.impls();
     FunctionImplDTO[] implDTOs =
@@ -143,31 +154,37 @@ public class FunctionDTO implements Function {
         .build();
   }
 
+  /** {@inheritDoc} */
   @Override
   public FunctionSignature signature() {
     return signature == null ? null : signature.toFunctionSignature();
   }
 
+  /** {@inheritDoc} */
   @Override
   public FunctionType functionType() {
     return functionType;
   }
 
+  /** {@inheritDoc} */
   @Override
   public boolean deterministic() {
     return deterministic;
   }
 
+  /** {@inheritDoc} */
   @Override
   public String comment() {
     return comment;
   }
 
+  /** {@inheritDoc} */
   @Override
   public Type returnType() {
     return returnType;
   }
 
+  /** {@inheritDoc} */
   @Override
   public FunctionImpl[] impls() {
     if (impls == null) {
@@ -176,6 +193,7 @@ public class FunctionDTO implements Function {
     return Arrays.stream(impls).map(FunctionImplDTO::toFunctionImpl).toArray(FunctionImpl[]::new);
   }
 
+  /** {@inheritDoc} */
   @Override
   public FunctionColumn[] returnColumns() {
     if (returnColumns == null) {
@@ -186,11 +204,13 @@ public class FunctionDTO implements Function {
         .toArray(FunctionColumn[]::new);
   }
 
+  /** {@inheritDoc} */
   @Override
   public Audit auditInfo() {
     return audit;
   }
 
+  /** {@inheritDoc} */
   @Override
   public int version() {
     return version;
@@ -209,51 +229,110 @@ public class FunctionDTO implements Function {
 
     private Builder() {}
 
+    /**
+     * Sets the function signature.
+     *
+     * @param signature Function signature DTO.
+     * @return This builder.
+     */
     public Builder withSignature(FunctionSignatureDTO signature) {
       this.signature = signature;
       return this;
     }
 
+    /**
+     * Sets function type.
+     *
+     * @param functionType Function type.
+     * @return This builder.
+     */
     public Builder withFunctionType(FunctionType functionType) {
       this.functionType = functionType;
       return this;
     }
 
+    /**
+     * Sets determinism flag.
+     *
+     * @param deterministic Whether deterministic.
+     * @return This builder.
+     */
     public Builder withDeterministic(boolean deterministic) {
       this.deterministic = deterministic;
       return this;
     }
 
+    /**
+     * Sets comment.
+     *
+     * @param comment Function comment.
+     * @return This builder.
+     */
     public Builder withComment(String comment) {
       this.comment = comment;
       return this;
     }
 
+    /**
+     * Sets return type.
+     *
+     * @param returnType Return type for scalar/aggregate functions.
+     * @return This builder.
+     */
     public Builder withReturnType(Type returnType) {
       this.returnType = returnType;
       return this;
     }
 
+    /**
+     * Sets return columns.
+     *
+     * @param returnColumns Table function return columns.
+     * @return This builder.
+     */
     public Builder withReturnColumns(FunctionColumnDTO[] returnColumns) {
       this.returnColumns = returnColumns;
       return this;
     }
 
+    /**
+     * Sets implementations.
+     *
+     * @param impls Function implementations.
+     * @return This builder.
+     */
     public Builder withImpls(FunctionImplDTO[] impls) {
       this.impls = impls;
       return this;
     }
 
+    /**
+     * Sets version.
+     *
+     * @param version Function version.
+     * @return This builder.
+     */
     public Builder withVersion(int version) {
       this.version = version;
       return this;
     }
 
+    /**
+     * Sets audit info.
+     *
+     * @param audit Audit DTO.
+     * @return This builder.
+     */
     public Builder withAudit(AuditDTO audit) {
       this.audit = audit;
       return this;
     }
 
+    /**
+     * Builds the DTO.
+     *
+     * @return Constructed {@link FunctionDTO}.
+     */
     public FunctionDTO build() {
       return new FunctionDTO(
           signature,

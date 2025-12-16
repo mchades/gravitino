@@ -43,11 +43,22 @@ public class FunctionSignatureDTO implements RESTRequest {
 
   private FunctionSignatureDTO() {}
 
+  /**
+   * Creates a function signature DTO.
+   *
+   * @param name Function name.
+   * @param functionParams Function parameters.
+   */
   public FunctionSignatureDTO(String name, FunctionParamDTO[] functionParams) {
     this.name = name;
     this.functionParams = functionParams;
   }
 
+  /**
+   * Converts this DTO to a {@link FunctionSignature}.
+   *
+   * @return The converted signature.
+   */
   public FunctionSignature toFunctionSignature() {
     FunctionParam[] params =
         functionParams == null
@@ -58,6 +69,7 @@ public class FunctionSignatureDTO implements RESTRequest {
     return FunctionSignature.of(name, params);
   }
 
+  /** {@inheritDoc} */
   @Override
   public void validate() throws IllegalArgumentException {
     Preconditions.checkArgument(StringUtils.isNotBlank(name), "\"name\" field is required");

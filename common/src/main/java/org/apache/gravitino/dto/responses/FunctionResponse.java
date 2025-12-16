@@ -34,6 +34,11 @@ public class FunctionResponse extends BaseResponse {
   @JsonProperty("function")
   private FunctionDTO function;
 
+  /**
+   * Creates a response containing a single function.
+   *
+   * @param function Function payload.
+   */
   public FunctionResponse(FunctionDTO function) {
     super(0);
     this.function = function;
@@ -43,6 +48,7 @@ public class FunctionResponse extends BaseResponse {
     super();
   }
 
+  /** {@inheritDoc} */
   @Override
   public void validate() throws IllegalArgumentException {
     super.validate();

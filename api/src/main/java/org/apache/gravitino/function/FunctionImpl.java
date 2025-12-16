@@ -33,8 +33,11 @@ import org.apache.gravitino.annotation.Evolving;
 public abstract class FunctionImpl {
   /** Supported implementation languages. */
   public enum Language {
+    /** SQL implementation. */
     SQL,
+    /** Java implementation. */
     JAVA,
+    /** Python implementation. */
     PYTHON
   }
 
@@ -49,34 +52,73 @@ public abstract class FunctionImpl {
     this.properties = properties == null ? ImmutableMap.of() : ImmutableMap.copyOf(properties);
   }
 
-  /** Create a SQL implementation. */
+  /**
+   * Create a SQL implementation.
+   *
+   * @param dialect SQL dialect name.
+   * @param sql SQL text body.
+   * @return A {@link SQLImpl} instance.
+   */
   public static SQLImpl ofSql(String dialect, String sql) {
     return ofSql(dialect, sql, null, null);
   }
 
-  /** Create a SQL implementation. */
+  /**
+   * Create a SQL implementation.
+   *
+   * @param dialect SQL dialect name.
+   * @param sql SQL text body.
+   * @param resources External resources required by the implementation.
+   * @param properties Additional implementation properties.
+   * @return A {@link SQLImpl} instance.
+   */
   public static SQLImpl ofSql(
       String dialect, String sql, FunctionResources resources, Map<String, String> properties) {
     return new SQLImpl(dialect, sql, resources, properties);
   }
 
-  /** Create a Java implementation. */
+  /**
+   * Create a Java implementation.
+   *
+   * @param className Fully qualified class name.
+   * @return A {@link JavaImpl} instance.
+   */
   public static JavaImpl ofJava(String className) {
     return ofJava(className, null, null);
   }
 
-  /** Create a Java implementation. */
+  /**
+   * Create a Java implementation.
+   *
+   * @param className Fully qualified class name.
+   * @param resources External resources required by the implementation.
+   * @param properties Additional implementation properties.
+   * @return A {@link JavaImpl} instance.
+   */
   public static JavaImpl ofJava(
       String className, FunctionResources resources, Map<String, String> properties) {
     return new JavaImpl(className, resources, properties);
   }
 
-  /** Create a Python implementation. */
+  /**
+   * Create a Python implementation.
+   *
+   * @param handler Python handler entrypoint.
+   * @return A {@link PythonImpl} instance.
+   */
   public static PythonImpl ofPython(String handler) {
     return ofPython(handler, null, null, null);
   }
 
-  /** Create a Python implementation. */
+  /**
+   * Create a Python implementation.
+   *
+   * @param handler Python handler entrypoint.
+   * @param codeBlock Inline code block for the handler.
+   * @param resources External resources required by the implementation.
+   * @param properties Additional implementation properties.
+   * @return A {@link PythonImpl} instance.
+   */
   public static PythonImpl ofPython(
       String handler,
       String codeBlock,

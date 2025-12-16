@@ -67,6 +67,14 @@ public interface FunctionImplDTO extends RESTRequest {
       this(null, null, null, null);
     }
 
+    /**
+     * Creates a SQL implementation DTO.
+     *
+     * @param dialect SQL dialect.
+     * @param sql SQL text.
+     * @param resources Optional resources.
+     * @param properties Implementation properties.
+     */
     public SqlImplDTO(
         String dialect,
         String sql,
@@ -78,12 +86,14 @@ public interface FunctionImplDTO extends RESTRequest {
       this.properties = properties;
     }
 
+    /** {@inheritDoc} */
     @Override
     public FunctionImpl toFunctionImpl() {
       return FunctionImpl.ofSql(
           dialect, sql, resources == null ? null : resources.toResources(), properties);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void validate() throws IllegalArgumentException {
       Preconditions.checkArgument(StringUtils.isNotBlank(dialect), "\"dialect\" is required");
@@ -110,6 +120,13 @@ public interface FunctionImplDTO extends RESTRequest {
     @JsonProperty("properties")
     private Map<String, String> properties;
 
+    /**
+     * Creates a Java implementation DTO.
+     *
+     * @param className Fully qualified class name.
+     * @param resources Optional resources.
+     * @param properties Implementation properties.
+     */
     public JavaImplDTO(
         String className, FunctionResourcesDTO resources, Map<String, String> properties) {
       this.className = className;
@@ -117,12 +134,14 @@ public interface FunctionImplDTO extends RESTRequest {
       this.properties = properties;
     }
 
+    /** {@inheritDoc} */
     @Override
     public FunctionImpl toFunctionImpl() {
       return FunctionImpl.ofJava(
           className, resources == null ? null : resources.toResources(), properties);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void validate() throws IllegalArgumentException {
       Preconditions.checkArgument(StringUtils.isNotBlank(className), "\"className\" is required");
@@ -151,6 +170,14 @@ public interface FunctionImplDTO extends RESTRequest {
     @JsonProperty("properties")
     private Map<String, String> properties;
 
+    /**
+     * Creates a Python implementation DTO.
+     *
+     * @param handler Python handler entry.
+     * @param codeBlock Inline code block.
+     * @param resources Optional resources.
+     * @param properties Implementation properties.
+     */
     public PythonImplDTO(
         String handler,
         String codeBlock,
@@ -162,12 +189,14 @@ public interface FunctionImplDTO extends RESTRequest {
       this.properties = properties;
     }
 
+    /** {@inheritDoc} */
     @Override
     public FunctionImpl toFunctionImpl() {
       return FunctionImpl.ofPython(
           handler, codeBlock, resources == null ? null : resources.toResources(), properties);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void validate() throws IllegalArgumentException {
       Preconditions.checkArgument(StringUtils.isNotBlank(handler), "\"handler\" is required");
@@ -177,6 +206,12 @@ public interface FunctionImplDTO extends RESTRequest {
     }
   }
 
+  /**
+   * Converts a {@link FunctionImpl} to its DTO representation.
+   *
+   * @param impl Source implementation.
+   * @return DTO representing the implementation.
+   */
   static FunctionImplDTO from(FunctionImpl impl) {
     if (impl instanceof org.apache.gravitino.function.SQLImpl) {
       org.apache.gravitino.function.SQLImpl sqlImpl = (org.apache.gravitino.function.SQLImpl) impl;

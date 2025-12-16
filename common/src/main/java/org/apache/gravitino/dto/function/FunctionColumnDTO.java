@@ -48,16 +48,29 @@ public class FunctionColumnDTO implements RESTRequest {
 
   private FunctionColumnDTO() {}
 
+  /**
+   * Creates a function column DTO.
+   *
+   * @param name Column name.
+   * @param dataType Column data type.
+   * @param comment Optional column comment.
+   */
   public FunctionColumnDTO(String name, Type dataType, String comment) {
     this.name = name;
     this.dataType = dataType;
     this.comment = comment;
   }
 
+  /**
+   * Converts this DTO to {@link FunctionColumn}.
+   *
+   * @return The converted {@link FunctionColumn}.
+   */
   public FunctionColumn toFunctionColumn() {
     return FunctionColumn.of(name, dataType, comment);
   }
 
+  /** {@inheritDoc} */
   @Override
   public void validate() throws IllegalArgumentException {
     Preconditions.checkArgument(StringUtils.isNotBlank(name), "\"columnName\" field is required");

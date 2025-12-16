@@ -36,10 +36,16 @@ public class FunctionDeleteRequest implements RESTRequest {
 
   private FunctionDeleteRequest() {}
 
+  /**
+   * Creates a delete request targeting a specific signature.
+   *
+   * @param signature Optional signature to disambiguate overloaded functions.
+   */
   public FunctionDeleteRequest(FunctionSignatureDTO signature) {
     this.signature = signature;
   }
 
+  /** {@inheritDoc} */
   @Override
   public void validate() throws IllegalArgumentException {
     if (signature != null) {

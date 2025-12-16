@@ -35,6 +35,11 @@ public class FunctionUpdatesRequest implements RESTRequest {
   @JsonProperty("updates")
   private final List<FunctionUpdateRequest> updates;
 
+  /**
+   * Creates a wrapper for function updates.
+   *
+   * @param updates Update requests list.
+   */
   public FunctionUpdatesRequest(List<FunctionUpdateRequest> updates) {
     this.updates = updates;
   }
@@ -43,6 +48,7 @@ public class FunctionUpdatesRequest implements RESTRequest {
     this(null);
   }
 
+  /** {@inheritDoc} */
   @Override
   public void validate() throws IllegalArgumentException {
     Preconditions.checkArgument(updates != null, "\"updates\" must not be null");

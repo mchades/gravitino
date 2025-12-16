@@ -49,6 +49,11 @@ import org.apache.gravitino.rest.RESTRequest;
 })
 public interface FunctionUpdateRequest extends RESTRequest {
 
+  /**
+   * Converts this request to a {@link FunctionChange}.
+   *
+   * @return The function change represented by the request.
+   */
   FunctionChange functionChange();
 
   @Getter
@@ -66,11 +71,18 @@ public interface FunctionUpdateRequest extends RESTRequest {
       this(null, null);
     }
 
+    /**
+     * Creates a comment update request.
+     *
+     * @param signature Optional function signature to target.
+     * @param newComment New comment value.
+     */
     public UpdateCommentRequest(FunctionSignatureDTO signature, String newComment) {
       this.signature = signature;
       this.newComment = newComment;
     }
 
+    /** {@inheritDoc} */
     @Override
     public FunctionChange functionChange() {
       if (signature == null) {
@@ -79,6 +91,7 @@ public interface FunctionUpdateRequest extends RESTRequest {
       return FunctionChange.updateComment(signature.toFunctionSignature(), newComment);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void validate() throws IllegalArgumentException {
       if (signature != null) {
@@ -100,6 +113,7 @@ public interface FunctionUpdateRequest extends RESTRequest {
     @JsonProperty("newImpls")
     private FunctionImplDTO[] newImpls;
 
+    /** {@inheritDoc} */
     @Override
     public FunctionChange functionChange() {
       FunctionChange change =
@@ -111,6 +125,7 @@ public interface FunctionUpdateRequest extends RESTRequest {
       return change;
     }
 
+    /** {@inheritDoc} */
     @Override
     public void validate() throws IllegalArgumentException {
       Preconditions.checkArgument(
@@ -135,6 +150,7 @@ public interface FunctionUpdateRequest extends RESTRequest {
     @JsonProperty("implementation")
     private FunctionImplDTO implementation;
 
+    /** {@inheritDoc} */
     @Override
     public FunctionChange functionChange() {
       return FunctionChange.addImplementation(
@@ -142,6 +158,7 @@ public interface FunctionUpdateRequest extends RESTRequest {
           implementation.toFunctionImpl());
     }
 
+    /** {@inheritDoc} */
     @Override
     public void validate() throws IllegalArgumentException {
       Preconditions.checkArgument(

@@ -26,7 +26,6 @@ import com.google.common.base.Preconditions;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.gravitino.dto.rel.expressions.LiteralDTO;
 import org.apache.gravitino.function.FunctionParam;
 import org.apache.gravitino.json.JsonUtils;
 import org.apache.gravitino.rel.expressions.Expression;
@@ -58,6 +57,15 @@ public class FunctionParamDTO implements FunctionParam, RESTRequest {
   /** Default constructor for Jackson. */
   private FunctionParamDTO() {}
 
+  /**
+   * Creates a function parameter DTO.
+   *
+   * @param name Parameter name.
+   * @param dataType Parameter data type.
+   * @param comment Optional parameter comment.
+   * @param defaultValue Default value; if null, {@link FunctionParam#DEFAULT_VALUE_NOT_SET} is
+   *     used.
+   */
   public FunctionParamDTO(String name, Type dataType, String comment, Expression defaultValue) {
     this.name = name;
     this.dataType = dataType;
@@ -65,32 +73,34 @@ public class FunctionParamDTO implements FunctionParam, RESTRequest {
     this.defaultValue = defaultValue == null ? FunctionParam.DEFAULT_VALUE_NOT_SET : defaultValue;
   }
 
+  /** {@inheritDoc} */
   @Override
   public String name() {
     return name;
   }
 
+  /** {@inheritDoc} */
   @Override
   public Type dataType() {
     return dataType;
   }
 
+  /** {@inheritDoc} */
   @Override
   public String comment() {
     return comment;
   }
 
+  /** {@inheritDoc} */
   @Override
   public Expression defaultValue() {
     return defaultValue;
   }
 
+  /** {@inheritDoc} */
   @Override
   public void validate() throws IllegalArgumentException {
     Preconditions.checkArgument(StringUtils.isNotBlank(name), "\"name\" field is required");
     Preconditions.checkArgument(dataType != null, "\"dataType\" field is required");
-    if (defaultValue instanceof LiteralDTO) {
-      ((LiteralDTO) defaultValue).validate();
-    }
   }
 }

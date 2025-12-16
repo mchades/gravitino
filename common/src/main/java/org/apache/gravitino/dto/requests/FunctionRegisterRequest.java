@@ -66,6 +66,17 @@ public class FunctionRegisterRequest implements RESTRequest {
 
   private FunctionRegisterRequest() {}
 
+  /**
+   * Creates a request to register a function.
+   *
+   * @param signature Function signature.
+   * @param comment Optional comment.
+   * @param type Function type.
+   * @param deterministic Whether deterministic.
+   * @param returnType Return type for scalar/aggregate functions.
+   * @param returnColumns Return columns for table functions.
+   * @param impls Function implementations.
+   */
   public FunctionRegisterRequest(
       FunctionSignatureDTO signature,
       String comment,
@@ -83,6 +94,7 @@ public class FunctionRegisterRequest implements RESTRequest {
     this.impls = impls;
   }
 
+  /** {@inheritDoc} */
   @Override
   public void validate() throws IllegalArgumentException {
     Preconditions.checkArgument(signature != null, "\"signature\" must be provided");

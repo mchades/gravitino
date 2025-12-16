@@ -44,16 +44,33 @@ public class FunctionResourcesDTO {
     this(FunctionResources.empty());
   }
 
+  /**
+   * Creates a DTO from {@link FunctionResources}.
+   *
+   * @param resources Source resources.
+   */
   public FunctionResourcesDTO(FunctionResources resources) {
     this(resources.jars(), resources.files(), resources.archives());
   }
 
+  /**
+   * Creates a DTO with explicit resources.
+   *
+   * @param jars Jar URIs.
+   * @param files File URIs.
+   * @param archives Archive URIs.
+   */
   public FunctionResourcesDTO(String[] jars, String[] files, String[] archives) {
     this.jars = jars;
     this.files = files;
     this.archives = archives;
   }
 
+  /**
+   * Converts this DTO to {@link FunctionResources}.
+   *
+   * @return Converted resources.
+   */
   public FunctionResources toResources() {
     if ((jars == null || jars.length == 0)
         && (files == null || files.length == 0)

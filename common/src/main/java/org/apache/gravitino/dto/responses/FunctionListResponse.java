@@ -34,6 +34,11 @@ public class FunctionListResponse extends BaseResponse {
   @JsonProperty("functions")
   private FunctionDTO[] functions;
 
+  /**
+   * Creates a response containing multiple functions.
+   *
+   * @param functions Function array payload.
+   */
   public FunctionListResponse(FunctionDTO[] functions) {
     super(0);
     this.functions = functions;
@@ -43,6 +48,7 @@ public class FunctionListResponse extends BaseResponse {
     super();
   }
 
+  /** {@inheritDoc} */
   @Override
   public void validate() throws IllegalArgumentException {
     super.validate();
