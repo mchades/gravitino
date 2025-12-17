@@ -444,10 +444,24 @@ public abstract class BaseCatalog implements TableCatalog, SupportsNamespaces, F
 
   @Override
   public Identifier[] listFunctions(String[] namespace) throws NoSuchNamespaceException {
-    String[] targetNamespace =
-        namespace.length == 0 ? new String[] {getCatalogDefaultNamespace()} : namespace;
-    validateNamespace(targetNamespace);
-    return builtinFunctionSupport.listFunctions(targetNamespace, getCatalogDefaultNamespace());
+    String gravitinoNamespace;
+    if (namespace.length == 0) {
+      gravitinoNamespace = getCatalogDefaultNamespace();
+    } else {
+      validateNamespace(namespace);
+      gravitinoNamespace = namespace[0];
+    }
+    try {
+      NameIdentifier[] identifiers =
+          gravitinoCatalogClient.asFunctionCatalog().listFunctions(Namespace.of(gravitinoNamespace));
+      return Arrays.stream(identifiers)
+          .map(
+              identifier ->
+                  Identifier.of(new String[] {getDatabase(identifier)}, identifier.name()))
+          .toArray(Identifier[]::new);
+    } catch (NoSuchSchemaException e) {
+      throw new NoSuchNamespaceException(namespace);
+    }
   }
 
   @Override

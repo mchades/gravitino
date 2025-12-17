@@ -224,6 +224,7 @@ public class FunctionDTO implements Function {
     return version;
   }
 
+  /** Builder for {@link FunctionDTO}. */
   public static class Builder {
     private FunctionSignatureDTO signature;
     private FunctionType functionType;

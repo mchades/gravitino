@@ -43,6 +43,11 @@ import org.apache.gravitino.rest.RESTRequest;
 })
 public interface FunctionImplDTO extends RESTRequest {
 
+  /**
+   * Converts this DTO to a {@link FunctionImpl}.
+   *
+   * @return The converted function implementation.
+   */
   FunctionImpl toFunctionImpl();
 
   /** DTO for SQL implementation. */
