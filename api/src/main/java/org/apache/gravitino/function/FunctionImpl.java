@@ -21,6 +21,7 @@ package org.apache.gravitino.function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.gravitino.annotation.Evolving;
 
 /**
@@ -41,13 +42,43 @@ public abstract class FunctionImpl {
     PYTHON
   }
 
+  /** Supported execution runtimes for function implementations. */
+  public enum RuntimeType {
+    /** Spark runtime. */
+    SPARK,
+    /** Trino runtime. */
+    TRINO;
+
+    /**
+     * Parse a runtime value from string.
+     *
+     * @param value Runtime name.
+     * @return Parsed runtime.
+     */
+    public static RuntimeType fromString(String value) {
+      Preconditions.checkArgument(StringUtils.isNotBlank(value), "Function runtime must be set");
+      try {
+        return RuntimeType.valueOf(value.trim().toUpperCase());
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException("Unsupported function runtime: " + value, e);
+      }
+    }
+  }
+
   private final Language language;
+  private final RuntimeType runtime;
   private final FunctionResources resources;
   private final Map<String, String> properties;
 
-  FunctionImpl(Language language, FunctionResources resources, Map<String, String> properties) {
+  protected FunctionImpl(
+      Language language,
+      RuntimeType runtime,
+      FunctionResources resources,
+      Map<String, String> properties) {
     Preconditions.checkNotNull(language, "Function implementation language must be set");
+    Preconditions.checkNotNull(runtime, "Function runtime must be set");
     this.language = language;
+    this.runtime = runtime;
     this.resources = resources == null ? FunctionResources.empty() : resources;
     this.properties = properties == null ? ImmutableMap.of() : ImmutableMap.copyOf(properties);
   }
@@ -55,64 +86,74 @@ public abstract class FunctionImpl {
   /**
    * Create a SQL implementation.
    *
-   * @param dialect SQL dialect name.
+   * @param runtime Target runtime.
    * @param sql SQL text body.
    * @return A {@link SQLImpl} instance.
    */
-  public static SQLImpl ofSql(String dialect, String sql) {
-    return ofSql(dialect, sql, null, null);
+  public static SQLImpl ofSql(RuntimeType runtime, String sql) {
+    return ofSql(runtime, sql, null, null);
   }
 
   /**
    * Create a SQL implementation.
    *
-   * @param dialect SQL dialect name.
+   * @param runtime Target runtime.
    * @param sql SQL text body.
    * @param resources External resources required by the implementation.
    * @param properties Additional implementation properties.
    * @return A {@link SQLImpl} instance.
    */
   public static SQLImpl ofSql(
-      String dialect, String sql, FunctionResources resources, Map<String, String> properties) {
-    return new SQLImpl(dialect, sql, resources, properties);
+      RuntimeType runtime,
+      String sql,
+      FunctionResources resources,
+      Map<String, String> properties) {
+    return new SQLImpl(runtime, sql, resources, properties);
   }
 
   /**
    * Create a Java implementation.
    *
+   * @param runtime Target runtime.
    * @param className Fully qualified class name.
    * @return A {@link JavaImpl} instance.
    */
-  public static JavaImpl ofJava(String className) {
-    return ofJava(className, null, null);
+  public static JavaImpl ofJava(RuntimeType runtime, String className) {
+    return ofJava(runtime, className, null, null);
   }
 
   /**
    * Create a Java implementation.
    *
+   * @param runtime Target runtime.
    * @param className Fully qualified class name.
    * @param resources External resources required by the implementation.
    * @param properties Additional implementation properties.
    * @return A {@link JavaImpl} instance.
    */
   public static JavaImpl ofJava(
-      String className, FunctionResources resources, Map<String, String> properties) {
-    return new JavaImpl(className, resources, properties);
+      RuntimeType runtime,
+      String className,
+      FunctionResources resources,
+      Map<String, String> properties) {
+    return new JavaImpl(runtime, className, resources, properties);
   }
 
   /**
    * Create a Python implementation.
    *
+   * @param runtime Target runtime.
    * @param handler Python handler entrypoint.
    * @return A {@link PythonImpl} instance.
    */
-  public static PythonImpl ofPython(String handler) {
-    return ofPython(handler, null, null, null);
+  public static PythonImpl ofPython(RuntimeType runtime, String handler) {
+    return ofPython(runtime, handler, null, null, null);
   }
 
   /**
    * Create a Python implementation.
    *
+   * @param runtime Target runtime.
    * @param handler Python handler entrypoint.
    * @param codeBlock Inline code block for the handler.
    * @param resources External resources required by the implementation.
@@ -120,11 +161,12 @@ public abstract class FunctionImpl {
    * @return A {@link PythonImpl} instance.
    */
   public static PythonImpl ofPython(
+      RuntimeType runtime,
       String handler,
       String codeBlock,
       FunctionResources resources,
       Map<String, String> properties) {
-    return new PythonImpl(handler, codeBlock, resources, properties);
+    return new PythonImpl(runtime, handler, codeBlock, resources, properties);
   }
 
   /**
@@ -132,6 +174,13 @@ public abstract class FunctionImpl {
    */
   public Language language() {
     return language;
+  }
+
+  /**
+   * @return The target runtime.
+   */
+  public RuntimeType runtime() {
+    return runtime;
   }
 
   /**

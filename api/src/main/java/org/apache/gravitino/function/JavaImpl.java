@@ -26,8 +26,12 @@ import java.util.Objects;
 public class JavaImpl extends FunctionImpl {
   private final String className;
 
-  JavaImpl(String className, FunctionResources resources, Map<String, String> properties) {
-    super(Language.JAVA, resources, properties);
+  JavaImpl(
+      RuntimeType runtime,
+      String className,
+      FunctionResources resources,
+      Map<String, String> properties) {
+    super(Language.JAVA, runtime, resources, properties);
     this.className = Preconditions.checkNotNull(className, "Java class name cannot be null");
   }
 
@@ -48,6 +52,7 @@ public class JavaImpl extends FunctionImpl {
     }
     JavaImpl that = (JavaImpl) obj;
     return Objects.equals(language(), that.language())
+        && Objects.equals(runtime(), that.runtime())
         && Objects.equals(resources(), that.resources())
         && Objects.equals(properties(), that.properties())
         && Objects.equals(className, that.className);
@@ -55,7 +60,7 @@ public class JavaImpl extends FunctionImpl {
 
   @Override
   public int hashCode() {
-    return Objects.hash(language(), resources(), properties(), className);
+    return Objects.hash(language(), runtime(), resources(), properties(), className);
   }
 
   @Override
@@ -63,6 +68,9 @@ public class JavaImpl extends FunctionImpl {
     return "JavaImpl{"
         + "language='"
         + language()
+        + '\''
+        + ", runtime='"
+        + runtime()
         + '\''
         + ", className='"
         + className

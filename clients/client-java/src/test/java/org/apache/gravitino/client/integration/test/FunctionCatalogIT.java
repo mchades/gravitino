@@ -152,7 +152,8 @@ public class FunctionCatalogIT extends BaseIT {
 
     FunctionImpl initialImpl =
         FunctionImpl.ofSql(
-            "spark", "CREATE FUNCTION " + functionName + "(x INT) RETURNS INT RETURN x + 1");
+            FunctionImpl.RuntimeType.SPARK,
+            "CREATE FUNCTION " + functionName + "(x INT) RETURNS INT RETURN x + 1");
     Function createdFunction =
         functionCatalog.registerFunction(
             functionIdent,
@@ -186,7 +187,8 @@ public class FunctionCatalogIT extends BaseIT {
 
     FunctionImpl additionalImpl =
         FunctionImpl.ofSql(
-            "trino", "CREATE FUNCTION " + functionName + "(x INT) RETURNS INT RETURN x * 2");
+            FunctionImpl.RuntimeType.TRINO,
+            "CREATE FUNCTION " + functionName + "(x INT) RETURNS INT RETURN x * 2");
     Function updatedFunction =
         functionCatalog.alterFunction(
             functionIdent,

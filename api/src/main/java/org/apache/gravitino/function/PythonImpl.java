@@ -28,11 +28,12 @@ public class PythonImpl extends FunctionImpl {
   private final String codeBlock;
 
   PythonImpl(
+      RuntimeType runtime,
       String handler,
       String codeBlock,
       FunctionResources resources,
       Map<String, String> properties) {
-    super(Language.PYTHON, resources, properties);
+    super(Language.PYTHON, runtime, resources, properties);
     this.handler = Preconditions.checkNotNull(handler, "Python handler cannot be null");
     this.codeBlock = codeBlock;
   }
@@ -61,6 +62,7 @@ public class PythonImpl extends FunctionImpl {
     }
     PythonImpl that = (PythonImpl) obj;
     return Objects.equals(language(), that.language())
+        && Objects.equals(runtime(), that.runtime())
         && Objects.equals(resources(), that.resources())
         && Objects.equals(properties(), that.properties())
         && Objects.equals(handler, that.handler)
@@ -69,7 +71,7 @@ public class PythonImpl extends FunctionImpl {
 
   @Override
   public int hashCode() {
-    return Objects.hash(language(), resources(), properties(), handler, codeBlock);
+    return Objects.hash(language(), runtime(), resources(), properties(), handler, codeBlock);
   }
 
   @Override
@@ -77,6 +79,9 @@ public class PythonImpl extends FunctionImpl {
     return "PythonImpl{"
         + "language='"
         + language()
+        + '\''
+        + ", runtime='"
+        + runtime()
         + '\''
         + ", handler='"
         + handler

@@ -22,22 +22,17 @@ import com.google.common.base.Preconditions;
 import java.util.Map;
 import java.util.Objects;
 
-/** SQL implementation with dialect and SQL body. */
+/** SQL implementation with runtime and SQL body. */
 public class SQLImpl extends FunctionImpl {
-  private final String dialect;
   private final String sql;
 
-  SQLImpl(String dialect, String sql, FunctionResources resources, Map<String, String> properties) {
-    super(Language.SQL, resources, properties);
-    this.dialect = Preconditions.checkNotNull(dialect, "SQL dialect cannot be null");
+  SQLImpl(
+      RuntimeType runtime,
+      String sql,
+      FunctionResources resources,
+      Map<String, String> properties) {
+    super(Language.SQL, runtime, resources, properties);
     this.sql = Preconditions.checkNotNull(sql, "SQL text cannot be null");
-  }
-
-  /**
-   * @return The SQL dialect.
-   */
-  public String dialect() {
-    return dialect;
   }
 
   /**
@@ -57,15 +52,15 @@ public class SQLImpl extends FunctionImpl {
     }
     SQLImpl that = (SQLImpl) obj;
     return Objects.equals(language(), that.language())
+        && Objects.equals(runtime(), that.runtime())
         && Objects.equals(resources(), that.resources())
         && Objects.equals(properties(), that.properties())
-        && Objects.equals(dialect, that.dialect)
         && Objects.equals(sql, that.sql);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(language(), resources(), properties(), dialect, sql);
+    return Objects.hash(language(), runtime(), resources(), properties(), sql);
   }
 
   @Override
@@ -74,8 +69,8 @@ public class SQLImpl extends FunctionImpl {
         + "language='"
         + language()
         + '\''
-        + ", dialect='"
-        + dialect
+        + ", runtime='"
+        + runtime()
         + '\''
         + ", sql='"
         + sql

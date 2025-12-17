@@ -56,8 +56,8 @@ public interface FunctionImplDTO extends RESTRequest {
   @ToString
   class SqlImplDTO implements FunctionImplDTO {
 
-    @JsonProperty("dialect")
-    private String dialect;
+    @JsonProperty("runtime")
+    private String runtime;
 
     @JsonProperty("sql")
     private String sql;
@@ -75,17 +75,17 @@ public interface FunctionImplDTO extends RESTRequest {
     /**
      * Creates a SQL implementation DTO.
      *
-     * @param dialect SQL dialect.
+     * @param runtime Target runtime.
      * @param sql SQL text.
      * @param resources Optional resources.
      * @param properties Implementation properties.
      */
     public SqlImplDTO(
-        String dialect,
+        String runtime,
         String sql,
         FunctionResourcesDTO resources,
         Map<String, String> properties) {
-      this.dialect = dialect;
+      this.runtime = runtime;
       this.sql = sql;
       this.resources = resources;
       this.properties = properties;
@@ -95,13 +95,16 @@ public interface FunctionImplDTO extends RESTRequest {
     @Override
     public FunctionImpl toFunctionImpl() {
       return FunctionImpl.ofSql(
-          dialect, sql, resources == null ? null : resources.toResources(), properties);
+          FunctionImpl.RuntimeType.fromString(runtime),
+          sql,
+          resources == null ? null : resources.toResources(),
+          properties);
     }
 
     /** {@inheritDoc} */
     @Override
     public void validate() throws IllegalArgumentException {
-      Preconditions.checkArgument(StringUtils.isNotBlank(dialect), "\"dialect\" is required");
+      Preconditions.checkArgument(StringUtils.isNotBlank(runtime), "\"runtime\" is required");
       Preconditions.checkArgument(StringUtils.isNotBlank(sql), "\"sql\" is required");
       if (resources != null) {
         resources.toResources();
@@ -116,6 +119,9 @@ public interface FunctionImplDTO extends RESTRequest {
   @NoArgsConstructor(access = AccessLevel.PRIVATE)
   class JavaImplDTO implements FunctionImplDTO {
 
+    @JsonProperty("runtime")
+    private String runtime;
+
     @JsonProperty("className")
     private String className;
 
@@ -128,12 +134,17 @@ public interface FunctionImplDTO extends RESTRequest {
     /**
      * Creates a Java implementation DTO.
      *
+     * @param runtime Target runtime.
      * @param className Fully qualified class name.
      * @param resources Optional resources.
      * @param properties Implementation properties.
      */
     public JavaImplDTO(
-        String className, FunctionResourcesDTO resources, Map<String, String> properties) {
+        String runtime,
+        String className,
+        FunctionResourcesDTO resources,
+        Map<String, String> properties) {
+      this.runtime = runtime;
       this.className = className;
       this.resources = resources;
       this.properties = properties;
@@ -143,12 +154,16 @@ public interface FunctionImplDTO extends RESTRequest {
     @Override
     public FunctionImpl toFunctionImpl() {
       return FunctionImpl.ofJava(
-          className, resources == null ? null : resources.toResources(), properties);
+          FunctionImpl.RuntimeType.fromString(runtime),
+          className,
+          resources == null ? null : resources.toResources(),
+          properties);
     }
 
     /** {@inheritDoc} */
     @Override
     public void validate() throws IllegalArgumentException {
+      Preconditions.checkArgument(StringUtils.isNotBlank(runtime), "\"runtime\" is required");
       Preconditions.checkArgument(StringUtils.isNotBlank(className), "\"className\" is required");
       if (resources != null) {
         resources.toResources();
@@ -162,6 +177,9 @@ public interface FunctionImplDTO extends RESTRequest {
   @ToString
   @NoArgsConstructor(access = AccessLevel.PRIVATE)
   class PythonImplDTO implements FunctionImplDTO {
+
+    @JsonProperty("runtime")
+    private String runtime;
 
     @JsonProperty("handler")
     private String handler;
@@ -178,16 +196,19 @@ public interface FunctionImplDTO extends RESTRequest {
     /**
      * Creates a Python implementation DTO.
      *
+     * @param runtime Target runtime.
      * @param handler Python handler entry.
      * @param codeBlock Inline code block.
      * @param resources Optional resources.
      * @param properties Implementation properties.
      */
     public PythonImplDTO(
+        String runtime,
         String handler,
         String codeBlock,
         FunctionResourcesDTO resources,
         Map<String, String> properties) {
+      this.runtime = runtime;
       this.handler = handler;
       this.codeBlock = codeBlock;
       this.resources = resources;
@@ -198,12 +219,17 @@ public interface FunctionImplDTO extends RESTRequest {
     @Override
     public FunctionImpl toFunctionImpl() {
       return FunctionImpl.ofPython(
-          handler, codeBlock, resources == null ? null : resources.toResources(), properties);
+          FunctionImpl.RuntimeType.fromString(runtime),
+          handler,
+          codeBlock,
+          resources == null ? null : resources.toResources(),
+          properties);
     }
 
     /** {@inheritDoc} */
     @Override
     public void validate() throws IllegalArgumentException {
+      Preconditions.checkArgument(StringUtils.isNotBlank(runtime), "\"runtime\" is required");
       Preconditions.checkArgument(StringUtils.isNotBlank(handler), "\"handler\" is required");
       if (resources != null) {
         resources.toResources();
@@ -221,7 +247,7 @@ public interface FunctionImplDTO extends RESTRequest {
     if (impl instanceof org.apache.gravitino.function.SQLImpl) {
       org.apache.gravitino.function.SQLImpl sqlImpl = (org.apache.gravitino.function.SQLImpl) impl;
       return new SqlImplDTO(
-          sqlImpl.dialect(),
+          sqlImpl.runtime().name(),
           sqlImpl.sql(),
           new FunctionResourcesDTO(sqlImpl.resources()),
           sqlImpl.properties());
@@ -229,6 +255,7 @@ public interface FunctionImplDTO extends RESTRequest {
       org.apache.gravitino.function.JavaImpl javaImpl =
           (org.apache.gravitino.function.JavaImpl) impl;
       return new JavaImplDTO(
+          javaImpl.runtime().name(),
           javaImpl.className(),
           new FunctionResourcesDTO(javaImpl.resources()),
           javaImpl.properties());
@@ -236,6 +263,7 @@ public interface FunctionImplDTO extends RESTRequest {
       org.apache.gravitino.function.PythonImpl pythonImpl =
           (org.apache.gravitino.function.PythonImpl) impl;
       return new PythonImplDTO(
+          pythonImpl.runtime().name(),
           pythonImpl.handler(),
           pythonImpl.codeBlock(),
           new FunctionResourcesDTO(pythonImpl.resources()),
