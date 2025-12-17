@@ -62,6 +62,15 @@ public class InMemoryFunctionDispatcher implements FunctionDispatcher {
   }
 
   @Override
+  public synchronized Function[] listFunctionInfos(Namespace namespace)
+      throws NoSuchSchemaException { // NO SONAR: kept for interface compatibility
+    return functions.entrySet().stream()
+        .filter(entry -> entry.getKey().namespace().equals(namespace))
+        .flatMap(entry -> Arrays.stream(latestFunctions(entry.getValue().values())))
+        .toArray(Function[]::new);
+  }
+
+  @Override
   public synchronized Function[] getFunction(NameIdentifier ident) throws NoSuchFunctionException {
     Map<FunctionSignature, NavigableMap<Integer, StoredFunction>> bySignature =
         functions.get(ident);

@@ -212,4 +212,32 @@ public class FunctionCatalogIT extends BaseIT {
     Assertions.assertThrows(
         NoSuchFunctionException.class, () -> functionCatalog.getFunction(functionIdent));
   }
+
+  @Test
+  public void testListFunctionInfos()
+      throws NoSuchSchemaException, FunctionAlreadyExistsException, NoSuchFunctionException {
+    FunctionCatalog functionCatalog = icebergCatalog.asFunctionCatalog();
+    Namespace functionNamespace = Namespace.of(schema.name());
+    String functionName = GravitinoITUtils.genRandomName("function_info");
+    NameIdentifier functionIdent = NameIdentifier.of(schema.name(), functionName);
+
+    FunctionImpl impl =
+        FunctionImpl.ofSql(
+            FunctionImpl.RuntimeType.SPARK,
+            "CREATE FUNCTION " + functionName + "(x INT) RETURNS INT RETURN x + 1");
+
+    functionCatalog.registerFunction(
+        functionIdent,
+        "info comment",
+        FunctionType.SCALAR,
+        true,
+        new FunctionParam[] {FunctionParams.of("x", Types.IntegerType.get(), "input value")},
+        Types.IntegerType.get(),
+        new FunctionImpl[] {impl});
+
+    Function[] functions = functionCatalog.listFunctionInfos(functionNamespace);
+    Assertions.assertEquals(1, functions.length);
+    Assertions.assertEquals(functionName, functions[0].signature().name());
+    Assertions.assertEquals(FunctionImpl.RuntimeType.SPARK, functions[0].impls()[0].runtime());
+  }
 }

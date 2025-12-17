@@ -310,6 +310,25 @@ class RelationalCatalog extends BaseSchemaCatalog implements TableCatalog, Funct
         .toArray(NameIdentifier[]::new);
   }
 
+  @Override
+  public Function[] listFunctionInfos(Namespace namespace) throws NoSuchSchemaException {
+    checkFunctionNamespace(namespace);
+
+    Namespace fullNamespace = getFunctionFullNamespace(namespace);
+    Map<String, String> params = new HashMap<>();
+    params.put("details", "true");
+
+    FunctionListResponse resp =
+        restClient.get(
+            formatFunctionRequestPath(fullNamespace),
+            params,
+            FunctionListResponse.class,
+            Collections.emptyMap(),
+            ErrorHandlers.functionErrorHandler());
+    resp.validate();
+    return resp.getFunctions();
+  }
+
   /**
    * Load the functions with a specified identifier.
    *

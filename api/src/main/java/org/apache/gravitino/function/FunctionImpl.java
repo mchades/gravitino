@@ -54,6 +54,7 @@ public abstract class FunctionImpl {
      *
      * @param value Runtime name.
      * @return Parsed runtime.
+     * @throws IllegalArgumentException If the runtime is not supported.
      */
     public static RuntimeType fromString(String value) {
       Preconditions.checkArgument(StringUtils.isNotBlank(value), "Function runtime must be set");
@@ -70,6 +71,14 @@ public abstract class FunctionImpl {
   private final FunctionResources resources;
   private final Map<String, String> properties;
 
+  /**
+   * Construct a {@link FunctionImpl}.
+   *
+   * @param language The language of the function implementation.
+   * @param runtime The runtime of the function implementation.
+   * @param resources The resources required by the function implementation.
+   * @param properties The properties of the function implementation.
+   */
   protected FunctionImpl(
       Language language,
       RuntimeType runtime,
