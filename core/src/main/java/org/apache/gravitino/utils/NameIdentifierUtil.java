@@ -211,6 +211,31 @@ public class NameIdentifierUtil {
       String metalake, String catalog, String schema, String model) {
     return NameIdentifier.of(metalake, catalog, schema, model);
   }
+  /**
+   * Create the function {@link NameIdentifier} with the given metalake, catalog, schema and
+   * function name.
+   *
+   * @param metalake The metalake name
+   * @param catalog The catalog name
+   * @param schema The schema name
+   * @param functionName The function name
+   * @return The created function {@link NameIdentifier}
+   */
+  public static NameIdentifier ofFunction(
+      String metalake, String catalog, String schema, String functionName) {
+    return NameIdentifier.of(metalake, catalog, schema, functionName);
+  }
+
+  /**
+   * Create the function {@link NameIdentifier} with the given namespace levels and function name.
+   *
+   * @param namespace The namespace
+   * @param functionName The function name
+   * @return The created function {@link NameIdentifier}
+   */
+  public static NameIdentifier ofFunction(Namespace namespace, String functionName) {
+    return NameIdentifier.of(namespace, functionName);
+  }
 
   /**
    * Create the model {@link NameIdentifier} from the give model version's namespace.

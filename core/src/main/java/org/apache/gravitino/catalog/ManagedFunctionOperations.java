@@ -18,21 +18,19 @@
  */
 package org.apache.gravitino.catalog;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.NavigableMap;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-import org.apache.gravitino.Audit;
+import java.util.stream.Collectors;
+import org.apache.gravitino.Entity;
+import org.apache.gravitino.EntityAlreadyExistsException;
 import org.apache.gravitino.EntityStore;
 import org.apache.gravitino.NameIdentifier;
 import org.apache.gravitino.Namespace;
 import org.apache.gravitino.exceptions.FunctionAlreadyExistsException;
+import org.apache.gravitino.exceptions.NoSuchEntityException;
 import org.apache.gravitino.exceptions.NoSuchFunctionException;
 import org.apache.gravitino.exceptions.NoSuchFunctionVersionException;
 import org.apache.gravitino.exceptions.NoSuchSchemaException;
@@ -45,57 +43,64 @@ import org.apache.gravitino.function.FunctionDefinitions;
 import org.apache.gravitino.function.FunctionImpl;
 import org.apache.gravitino.function.FunctionParam;
 import org.apache.gravitino.function.FunctionType;
+import org.apache.gravitino.meta.AuditInfo;
+import org.apache.gravitino.meta.FunctionEntity;
 import org.apache.gravitino.rel.types.Type;
 import org.apache.gravitino.storage.IdGenerator;
+import org.apache.gravitino.utils.NameIdentifierUtil;
+import org.apache.gravitino.utils.PrincipalUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * {@code ManagedFunctionOperations} provides an in-memory implementation of {@link
- * FunctionCatalog}.
- *
- * <p>The relational storage layer for functions is still a work in progress. This class keeps the
- * function metadata purely in memory so that the upper server and API layers can be implemented and
- * verified without depending on the storage layer.
+ * {@code ManagedFunctionOperations} provides an implementation of {@link FunctionCatalog} using
+ * EntityStore.
  */
 public class ManagedFunctionOperations implements FunctionCatalog {
 
+  private static final Logger LOG = LoggerFactory.getLogger(ManagedFunctionOperations.class);
   private static final int INIT_VERSION = 0;
+  private static final String LATEST_VERSION = "-1";
 
-  @SuppressWarnings("unused")
   private final EntityStore store;
-
-  @SuppressWarnings("unused")
   private final IdGenerator idGenerator;
-
-  private final ConcurrentMap<Namespace, ConcurrentMap<String, VersionedFunction>> functions;
-  private final Lock lock;
 
   public ManagedFunctionOperations(EntityStore store, IdGenerator idGenerator) {
     this.store = store;
     this.idGenerator = idGenerator;
-    this.functions = new ConcurrentHashMap<>();
-    this.lock = new ReentrantLock();
   }
 
   @Override
   public NameIdentifier[] listFunctions(Namespace namespace) throws NoSuchSchemaException {
-    ConcurrentMap<String, VersionedFunction> namespaceFunctions = functions.get(namespace);
-    if (namespaceFunctions == null || namespaceFunctions.isEmpty()) {
-      return new NameIdentifier[0];
-    }
+    try {
+      // List all entities in the namespace
+      List<FunctionEntity> allFunctions =
+          store.list(namespace, FunctionEntity.class, Entity.EntityType.FUNCTION);
 
-    return namespaceFunctions.keySet().stream()
-        .sorted()
-        .map(name -> NameIdentifier.of(namespace, name))
-        .toArray(NameIdentifier[]::new);
+      // Deduplicate by function name (keep only latest version of each function)
+      return allFunctions.stream()
+          .collect(
+              Collectors.toMap(
+                  entity -> extractBaseName(entity.name()),
+                  entity -> entity,
+                  (existing, replacement) ->
+                      existing.version() > replacement.version() ? existing : replacement))
+          .values()
+          .stream()
+          .map(entity -> NameIdentifierUtil.ofFunction(namespace, extractBaseName(entity.name())))
+          .sorted()
+          .toArray(NameIdentifier[]::new);
+    } catch (IOException e) {
+      LOG.error("Failed to list functions in namespace {}", namespace, e);
+      throw new RuntimeException("Failed to list functions", e);
+    }
   }
 
   @Override
   public Function getFunction(NameIdentifier ident) throws NoSuchFunctionException {
-    VersionedFunction versioned = versionedFunction(ident);
-    if (versioned == null || versioned.latest() == null) {
-      throw new NoSuchFunctionException("Function %s does not exist", ident);
-    }
-    return versioned.latest().toFunction();
+    // Get latest version
+    NameIdentifier latestIdent = toVersionedIdentifier(ident, LATEST_VERSION);
+    return getSpecificVersion(latestIdent, ident);
   }
 
   @Override
@@ -106,17 +111,22 @@ public class ManagedFunctionOperations implements FunctionCatalog {
           "Invalid version %d for function %s", version, ident);
     }
 
-    VersionedFunction versioned = versionedFunction(ident);
-    if (versioned == null) {
-      throw new NoSuchFunctionException("Function %s does not exist", ident);
-    }
-
-    FunctionRecord record = versioned.get(version);
-    if (record == null) {
+    NameIdentifier versionedIdent = toVersionedIdentifier(ident, String.valueOf(version));
+    try {
+      FunctionEntity entity =
+          store.get(versionedIdent, Entity.EntityType.FUNCTION, FunctionEntity.class);
+      if (entity == null) {
+        throw new NoSuchFunctionVersionException(
+            "Function version %d does not exist for %s", version, ident);
+      }
+      return toFunction(entity);
+    } catch (NoSuchEntityException e) {
       throw new NoSuchFunctionVersionException(
           "Function version %d does not exist for %s", version, ident);
+    } catch (IOException e) {
+      LOG.error("Failed to get function {} version {}", ident, version, e);
+      throw new RuntimeException("Failed to get function", e);
     }
-    return record.toFunction();
   }
 
   @Override
@@ -132,31 +142,41 @@ public class ManagedFunctionOperations implements FunctionCatalog {
     validateDefinitions(definitions);
     validateReturnType(functionType, returnType, null);
 
-    lock.lock();
-    try {
-      ConcurrentMap<String, VersionedFunction> namespaceFunctions =
-          functions.computeIfAbsent(ident.namespace(), key -> new ConcurrentHashMap<>());
-      if (namespaceFunctions.containsKey(ident.name())) {
-        throw new FunctionAlreadyExistsException("Function %s already exists", ident);
-      }
+    FunctionEntity entity =
+        FunctionEntity.builder()
+            .withId(idGenerator.nextId())
+            .withName(toVersionedName(ident.name(), INIT_VERSION))
+            .withNamespace(ident.namespace())
+            .withVersion(INIT_VERSION)
+            .withFunctionType(functionType)
+            .withDeterministic(deterministic)
+            .withComment(comment)
+            .withDefinitions(definitions)
+            .withReturnType(returnType)
+            .withReturnColumns(null)
+            .withAuditInfo(
+                AuditInfo.builder()
+                    .withCreator(PrincipalUtils.getCurrentPrincipal().getName())
+                    .withCreateTime(Instant.now())
+                    .build())
+            .build();
 
-      VersionedFunction versioned = new VersionedFunction();
-      FunctionRecord record =
-          FunctionRecord.of(
-              ident,
-              INIT_VERSION,
-              functionType,
-              deterministic,
-              comment,
-              definitions,
-              returnType,
-              null,
-              createAudit());
-      versioned.put(record);
-      namespaceFunctions.put(ident.name(), versioned);
-      return record.toFunction();
-    } finally {
-      lock.unlock();
+    try {
+      NameIdentifier versionedIdent = toVersionedIdentifier(ident, String.valueOf(INIT_VERSION));
+      store.put(entity, false /* overwrite */);
+
+      // Also store as latest version
+      FunctionEntity latestEntity =
+          copyWithName(entity, toVersionedName(ident.name(), LATEST_VERSION));
+      NameIdentifier latestIdent = toVersionedIdentifier(ident, LATEST_VERSION);
+      store.put(latestEntity, true /* overwrite */);
+
+      return toFunction(entity);
+    } catch (EntityAlreadyExistsException e) {
+      throw new FunctionAlreadyExistsException("Function %s already exists", ident);
+    } catch (IOException e) {
+      LOG.error("Failed to register function {}", ident, e);
+      throw new RuntimeException("Failed to register function", e);
     }
   }
 
@@ -172,31 +192,41 @@ public class ManagedFunctionOperations implements FunctionCatalog {
     validateDefinitions(definitions);
     validateReturnType(FunctionType.TABLE, null, returnColumns);
 
-    lock.lock();
-    try {
-      ConcurrentMap<String, VersionedFunction> namespaceFunctions =
-          functions.computeIfAbsent(ident.namespace(), key -> new ConcurrentHashMap<>());
-      if (namespaceFunctions.containsKey(ident.name())) {
-        throw new FunctionAlreadyExistsException("Function %s already exists", ident);
-      }
+    FunctionEntity entity =
+        FunctionEntity.builder()
+            .withId(idGenerator.nextId())
+            .withName(toVersionedName(ident.name(), INIT_VERSION))
+            .withNamespace(ident.namespace())
+            .withVersion(INIT_VERSION)
+            .withFunctionType(FunctionType.TABLE)
+            .withDeterministic(deterministic)
+            .withComment(comment)
+            .withDefinitions(definitions)
+            .withReturnType(null)
+            .withReturnColumns(returnColumns)
+            .withAuditInfo(
+                AuditInfo.builder()
+                    .withCreator(PrincipalUtils.getCurrentPrincipal().getName())
+                    .withCreateTime(Instant.now())
+                    .build())
+            .build();
 
-      VersionedFunction versioned = new VersionedFunction();
-      FunctionRecord record =
-          FunctionRecord.of(
-              ident,
-              INIT_VERSION,
-              FunctionType.TABLE,
-              deterministic,
-              comment,
-              definitions,
-              null,
-              returnColumns,
-              createAudit());
-      versioned.put(record);
-      namespaceFunctions.put(ident.name(), versioned);
-      return record.toFunction();
-    } finally {
-      lock.unlock();
+    try {
+      NameIdentifier versionedIdent = toVersionedIdentifier(ident, String.valueOf(INIT_VERSION));
+      store.put(entity, false /* overwrite */);
+
+      // Also store as latest version
+      FunctionEntity latestEntity =
+          copyWithName(entity, toVersionedName(ident.name(), LATEST_VERSION));
+      NameIdentifier latestIdent = toVersionedIdentifier(ident, LATEST_VERSION);
+      store.put(latestEntity, true /* overwrite */);
+
+      return toFunction(entity);
+    } catch (EntityAlreadyExistsException e) {
+      throw new FunctionAlreadyExistsException("Function %s already exists", ident);
+    } catch (IOException e) {
+      LOG.error("Failed to register function {}", ident, e);
+      throw new RuntimeException("Failed to register function", e);
     }
   }
 
@@ -208,20 +238,36 @@ public class ManagedFunctionOperations implements FunctionCatalog {
     }
     validateIdentifier(ident);
 
-    lock.lock();
     try {
-      VersionedFunction versioned = versionedFunction(ident);
-      if (versioned == null || versioned.latest() == null) {
+      // Get current latest version
+      NameIdentifier latestIdent = toVersionedIdentifier(ident, LATEST_VERSION);
+      FunctionEntity currentEntity =
+          store.get(latestIdent, Entity.EntityType.FUNCTION, FunctionEntity.class);
+      if (currentEntity == null) {
         throw new NoSuchFunctionException("Function %s does not exist", ident);
       }
 
-      FunctionRecord current = versioned.latest();
-      FunctionRecord updated =
-          current.applyChanges(changes, versioned.nextVersion(), createAudit());
-      versioned.put(updated);
-      return updated.toFunction();
-    } finally {
-      lock.unlock();
+      // Apply changes
+      FunctionEntity updatedEntity =
+          applyChanges(currentEntity, changes, currentEntity.version() + 1);
+
+      // Store new version
+      NameIdentifier newVersionIdent =
+          toVersionedIdentifier(ident, String.valueOf(updatedEntity.version()));
+      store.put(updatedEntity, false /* overwrite */);
+
+      // Update latest version
+      FunctionEntity latestEntity =
+          copyWithName(updatedEntity, toVersionedName(ident.name(), LATEST_VERSION));
+      store.update(
+          latestIdent, FunctionEntity.class, Entity.EntityType.FUNCTION, updater -> latestEntity);
+
+      return toFunction(updatedEntity);
+    } catch (NoSuchEntityException e) {
+      throw new NoSuchFunctionException("Function %s does not exist", ident);
+    } catch (IOException e) {
+      LOG.error("Failed to alter function {}", ident, e);
+      throw new RuntimeException("Failed to alter function", e);
     }
   }
 
@@ -229,26 +275,227 @@ public class ManagedFunctionOperations implements FunctionCatalog {
   public boolean dropFunction(NameIdentifier ident) {
     validateIdentifier(ident);
 
-    lock.lock();
     try {
-      ConcurrentMap<String, VersionedFunction> namespaceFunctions =
-          functions.get(ident.namespace());
-      if (namespaceFunctions == null) {
+      // Get latest version to find all versions
+      NameIdentifier latestIdent = toVersionedIdentifier(ident, LATEST_VERSION);
+      FunctionEntity latestEntity =
+          store.get(latestIdent, Entity.EntityType.FUNCTION, FunctionEntity.class);
+      if (latestEntity == null) {
         return false;
       }
-      VersionedFunction removed = namespaceFunctions.remove(ident.name());
-      if (namespaceFunctions.isEmpty()) {
-        functions.remove(ident.namespace());
+
+      // Delete all versions
+      for (int v = 0; v <= latestEntity.version(); v++) {
+        NameIdentifier versionIdent = toVersionedIdentifier(ident, String.valueOf(v));
+        try {
+          store.delete(versionIdent, Entity.EntityType.FUNCTION);
+        } catch (NoSuchEntityException e) {
+          // Version might not exist, continue
+        }
       }
-      return removed != null;
-    } finally {
-      lock.unlock();
+
+      // Delete latest version marker
+      store.delete(latestIdent, Entity.EntityType.FUNCTION);
+
+      return true;
+    } catch (NoSuchEntityException e) {
+      return false;
+    } catch (IOException e) {
+      LOG.error("Failed to drop function {}", ident, e);
+      throw new RuntimeException("Failed to drop function", e);
     }
   }
 
-  private VersionedFunction versionedFunction(NameIdentifier ident) {
-    ConcurrentMap<String, VersionedFunction> namespaceFunctions = functions.get(ident.namespace());
-    return namespaceFunctions == null ? null : namespaceFunctions.get(ident.name());
+  private Function getSpecificVersion(NameIdentifier versionedIdent, NameIdentifier originalIdent)
+      throws NoSuchFunctionException {
+    try {
+      FunctionEntity entity = null;
+
+      if (versionedIdent.name().endsWith("#" + LATEST_VERSION)) {
+        // Try to get the latest version marker
+        entity = store.get(versionedIdent, Entity.EntityType.FUNCTION, FunctionEntity.class);
+
+        // If not found, try to find the highest numbered version
+        if (entity == null) {
+          List<FunctionEntity> allVersions =
+              store.list(
+                  originalIdent.namespace(), FunctionEntity.class, Entity.EntityType.FUNCTION);
+          String baseName = originalIdent.name();
+          entity =
+              allVersions.stream()
+                  .filter(e -> extractBaseName(e.name()).equals(baseName))
+                  .filter(e -> !e.name().endsWith("#" + LATEST_VERSION))
+                  .max((a, b) -> Integer.compare(a.version(), b.version()))
+                  .orElse(null);
+        }
+      } else {
+        entity = store.get(versionedIdent, Entity.EntityType.FUNCTION, FunctionEntity.class);
+      }
+
+      if (entity == null) {
+        throw new NoSuchFunctionException("Function %s does not exist", originalIdent);
+      }
+      return toFunction(entity);
+    } catch (NoSuchEntityException e) {
+      throw new NoSuchFunctionException("Function %s does not exist", originalIdent);
+    } catch (IOException e) {
+      LOG.error("Failed to get function {}", originalIdent, e);
+      throw new RuntimeException("Failed to get function", e);
+    }
+  }
+
+  private FunctionEntity applyChanges(
+      FunctionEntity current, FunctionChange[] changes, int newVersion) {
+    String newComment = current.comment();
+    List<FunctionDefinition> updatedDefinitions =
+        new ArrayList<>(Arrays.asList(current.definitions()));
+
+    for (FunctionChange change : changes) {
+      if (change instanceof FunctionChange.UpdateComment) {
+        newComment = ((FunctionChange.UpdateComment) change).newComment();
+      } else if (change instanceof FunctionChange.AddDefinition) {
+        FunctionDefinition definition = ((FunctionChange.AddDefinition) change).definition();
+        updatedDefinitions.add(definition);
+      } else if (change instanceof FunctionChange.RemoveDefinition) {
+        FunctionParam[] params = ((FunctionChange.RemoveDefinition) change).parameters();
+        updatedDefinitions.removeIf(def -> parametersMatch(def.parameters(), params));
+      } else if (change instanceof FunctionChange.AddImpl) {
+        FunctionChange.AddImpl addImpl = (FunctionChange.AddImpl) change;
+        updateDefinitionImpl(
+            updatedDefinitions,
+            addImpl.parameters(),
+            def -> addImplementation(def, addImpl.implementation()));
+      } else if (change instanceof FunctionChange.UpdateImpl) {
+        FunctionChange.UpdateImpl updateImpl = (FunctionChange.UpdateImpl) change;
+        updateDefinitionImpl(
+            updatedDefinitions,
+            updateImpl.parameters(),
+            def -> updateImplementation(def, updateImpl.runtime(), updateImpl.implementation()));
+      } else if (change instanceof FunctionChange.RemoveImpl) {
+        FunctionChange.RemoveImpl removeImpl = (FunctionChange.RemoveImpl) change;
+        updateDefinitionImpl(
+            updatedDefinitions,
+            removeImpl.parameters(),
+            def -> removeImplementation(def, removeImpl.runtime()));
+      }
+    }
+
+    return FunctionEntity.builder()
+        .withId(idGenerator.nextId())
+        .withName(toVersionedName(extractBaseName(current.name()), newVersion))
+        .withNamespace(current.namespace())
+        .withVersion(newVersion)
+        .withFunctionType(current.functionType())
+        .withDeterministic(current.deterministic())
+        .withComment(newComment)
+        .withDefinitions(updatedDefinitions.toArray(new FunctionDefinition[0]))
+        .withReturnType(current.returnType())
+        .withReturnColumns(current.returnColumns())
+        .withAuditInfo(
+            AuditInfo.builder()
+                .withCreator(current.auditInfo().creator())
+                .withCreateTime(current.auditInfo().createTime())
+                .withLastModifier(PrincipalUtils.getCurrentPrincipal().getName())
+                .withLastModifiedTime(Instant.now())
+                .build())
+        .build();
+  }
+
+  private FunctionDefinition addImplementation(FunctionDefinition def, FunctionImpl impl) {
+    List<FunctionImpl> impls = new ArrayList<>(Arrays.asList(def.impls()));
+    impls.add(impl);
+    return FunctionDefinitions.of(def.parameters(), impls.toArray(new FunctionImpl[0]));
+  }
+
+  private FunctionDefinition updateImplementation(
+      FunctionDefinition def, FunctionImpl.RuntimeType runtime, FunctionImpl impl) {
+    FunctionImpl[] impls = def.impls();
+    FunctionImpl[] updated = Arrays.copyOf(impls, impls.length);
+    for (int i = 0; i < updated.length; i++) {
+      if (updated[i].runtime().equals(runtime)) {
+        updated[i] = impl;
+        break;
+      }
+    }
+    return FunctionDefinitions.of(def.parameters(), updated);
+  }
+
+  private FunctionDefinition removeImplementation(
+      FunctionDefinition def, FunctionImpl.RuntimeType runtime) {
+    List<FunctionImpl> impls = new ArrayList<>(Arrays.asList(def.impls()));
+    impls.removeIf(impl -> impl.runtime().equals(runtime));
+    if (impls.isEmpty()) {
+      throw new IllegalArgumentException("Cannot remove all implementations from a definition");
+    }
+    return FunctionDefinitions.of(def.parameters(), impls.toArray(new FunctionImpl[0]));
+  }
+
+  private void updateDefinitionImpl(
+      List<FunctionDefinition> definitions,
+      FunctionParam[] params,
+      java.util.function.Function<FunctionDefinition, FunctionDefinition> updater) {
+    for (int i = 0; i < definitions.size(); i++) {
+      if (parametersMatch(definitions.get(i).parameters(), params)) {
+        definitions.set(i, updater.apply(definitions.get(i)));
+        return;
+      }
+    }
+    throw new IllegalArgumentException("Definition with specified parameters not found");
+  }
+
+  private boolean parametersMatch(FunctionParam[] existing, FunctionParam[] target) {
+    if (existing == null && target == null) return true;
+    if (existing == null || target == null) return false;
+    if (existing.length != target.length) return false;
+
+    for (int i = 0; i < existing.length; i++) {
+      if (!existing[i].name().equals(target[i].name())
+          || !existing[i].dataType().equals(target[i].dataType())) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private NameIdentifier toVersionedIdentifier(NameIdentifier ident, String version) {
+    return NameIdentifierUtil.ofFunction(
+        ident.namespace().levels(), toVersionedName(ident.name(), version));
+  }
+
+  private String toVersionedName(String baseName, int version) {
+    return baseName + "#" + version;
+  }
+
+  private String toVersionedName(String baseName, String version) {
+    if (baseName.contains("#")) {
+      baseName = extractBaseName(baseName);
+    }
+    return baseName + "#" + version;
+  }
+
+  private String extractBaseName(String versionedName) {
+    int idx = versionedName.lastIndexOf('#');
+    return idx > 0 ? versionedName.substring(0, idx) : versionedName;
+  }
+
+  private FunctionEntity copyWithName(FunctionEntity entity, String newName) {
+    return FunctionEntity.builder()
+        .withId(entity.id())
+        .withName(newName)
+        .withNamespace(entity.namespace())
+        .withVersion(entity.version())
+        .withFunctionType(entity.functionType())
+        .withDeterministic(entity.deterministic())
+        .withComment(entity.comment())
+        .withDefinitions(entity.definitions())
+        .withReturnType(entity.returnType())
+        .withReturnColumns(entity.returnColumns())
+        .withAuditInfo(entity.auditInfo())
+        .build();
+  }
+
+  private Function toFunction(FunctionEntity entity) {
+    return new ManagedFunction(entity);
   }
 
   private void validateIdentifier(NameIdentifier ident) {
@@ -287,364 +534,64 @@ public class ManagedFunctionOperations implements FunctionCatalog {
     }
   }
 
-  private BasicAudit createAudit() {
-    Instant now = Instant.now();
-    String user = System.getProperty("user.name", "gravitino");
-    return new BasicAudit(user, now, user, now);
-  }
+  /** Managed function implementation that wraps a FunctionEntity. */
+  private static class ManagedFunction implements Function {
+    private final FunctionEntity entity;
 
-  private static final class VersionedFunction {
-    private final NavigableMap<Integer, FunctionRecord> versions = new java.util.TreeMap<>();
-
-    FunctionRecord latest() {
-      return versions.isEmpty() ? null : versions.lastEntry().getValue();
-    }
-
-    FunctionRecord get(int version) {
-      return versions.get(version);
-    }
-
-    void put(FunctionRecord record) {
-      versions.put(record.version, record);
-    }
-
-    int nextVersion() {
-      return versions.isEmpty() ? INIT_VERSION + 1 : versions.lastKey() + 1;
-    }
-  }
-
-  private static final class FunctionRecord {
-    private final Namespace namespace;
-    private final String name;
-    private final FunctionType type;
-    private final boolean deterministic;
-    private final String comment;
-    private final FunctionDefinition[] definitions;
-    private final Type returnType;
-    private final FunctionColumn[] returnColumns;
-    private final int version;
-    private final BasicAudit audit;
-
-    private FunctionRecord(
-        Namespace namespace,
-        String name,
-        FunctionType type,
-        boolean deterministic,
-        String comment,
-        FunctionDefinition[] definitions,
-        Type returnType,
-        FunctionColumn[] returnColumns,
-        int version,
-        BasicAudit audit) {
-      this.namespace = namespace;
-      this.name = name;
-      this.type = type;
-      this.deterministic = deterministic;
-      this.comment = comment;
-      this.definitions = copyDefinitions(definitions);
-      this.returnType = returnType;
-      this.returnColumns = returnColumns == null ? null : copyColumns(returnColumns);
-      this.version = version;
-      this.audit = audit;
-    }
-
-    static FunctionRecord of(
-        NameIdentifier ident,
-        int version,
-        FunctionType type,
-        boolean deterministic,
-        String comment,
-        FunctionDefinition[] definitions,
-        Type returnType,
-        FunctionColumn[] returnColumns,
-        BasicAudit audit) {
-      return new FunctionRecord(
-          ident.namespace(),
-          ident.name(),
-          type,
-          deterministic,
-          comment,
-          definitions,
-          returnType,
-          returnColumns,
-          version,
-          audit);
-    }
-
-    FunctionRecord applyChanges(FunctionChange[] changes, int newVersion, BasicAudit newAudit) {
-      String newComment = comment;
-      List<FunctionDefinition> updated =
-          new ArrayList<>(Arrays.asList(copyDefinitions(definitions)));
-
-      for (FunctionChange change : changes) {
-        if (change instanceof FunctionChange.UpdateComment) {
-          newComment = ((FunctionChange.UpdateComment) change).newComment();
-        } else if (change instanceof FunctionChange.AddDefinition) {
-          FunctionDefinition definition = ((FunctionChange.AddDefinition) change).definition();
-          updated.add(copyDefinition(definition));
-        } else if (change instanceof FunctionChange.RemoveDefinition) {
-          FunctionParam[] params = ((FunctionChange.RemoveDefinition) change).parameters();
-          int idx = findDefinition(updated, params);
-          if (idx < 0) {
-            throw new IllegalArgumentException("Definition to remove not found");
-          }
-          updated.remove(idx);
-        } else if (change instanceof FunctionChange.AddImpl) {
-          FunctionChange.AddImpl addImpl = (FunctionChange.AddImpl) change;
-          replaceDefinition(
-              updated,
-              addImpl.parameters(),
-              existing -> {
-                List<FunctionImpl> impls = new ArrayList<>(Arrays.asList(existing.impls()));
-                boolean exists =
-                    impls.stream()
-                        .anyMatch(
-                            impl -> impl.runtime().equals(addImpl.implementation().runtime()));
-                if (exists) {
-                  throw new IllegalArgumentException("Implementation runtime already exists");
-                }
-                impls.add(addImpl.implementation());
-                return FunctionDefinitions.of(
-                    existing.parameters(), impls.toArray(new FunctionImpl[0]));
-              });
-        } else if (change instanceof FunctionChange.UpdateImpl) {
-          FunctionChange.UpdateImpl updateImpl = (FunctionChange.UpdateImpl) change;
-          replaceDefinition(
-              updated,
-              updateImpl.parameters(),
-              existing -> {
-                FunctionImpl[] impls = existing.impls();
-                FunctionImpl[] replaced = Arrays.copyOf(impls, impls.length);
-                boolean found = false;
-                for (int i = 0; i < replaced.length; i++) {
-                  if (replaced[i].runtime().equals(updateImpl.runtime())) {
-                    replaced[i] = updateImpl.implementation();
-                    found = true;
-                    break;
-                  }
-                }
-                if (!found) {
-                  throw new IllegalArgumentException("Implementation runtime to update not found");
-                }
-                return FunctionDefinitions.of(existing.parameters(), replaced);
-              });
-        } else if (change instanceof FunctionChange.RemoveImpl) {
-          FunctionChange.RemoveImpl removeImpl = (FunctionChange.RemoveImpl) change;
-          replaceDefinition(
-              updated,
-              removeImpl.parameters(),
-              existing -> {
-                List<FunctionImpl> impls = new ArrayList<>(Arrays.asList(existing.impls()));
-                boolean removed =
-                    impls.removeIf(impl -> impl.runtime().equals(removeImpl.runtime()));
-                if (!removed) {
-                  throw new IllegalArgumentException("Implementation runtime to remove not found");
-                }
-                if (impls.isEmpty()) {
-                  throw new IllegalArgumentException(
-                      "Definition must contain at least one implementation");
-                }
-                return FunctionDefinitions.of(
-                    existing.parameters(), impls.toArray(new FunctionImpl[0]));
-              });
-        } else {
-          throw new IllegalArgumentException(
-              "Unsupported change type: " + change.getClass().getSimpleName());
-        }
-      }
-
-      if (updated.isEmpty()) {
-        throw new IllegalArgumentException("Function definitions cannot be empty after changes");
-      }
-
-      return new FunctionRecord(
-          namespace,
-          name,
-          type,
-          deterministic,
-          newComment,
-          updated.toArray(new FunctionDefinition[0]),
-          returnType,
-          returnColumns,
-          newVersion,
-          newAudit);
-    }
-
-    Function toFunction() {
-      return new Managed(copy());
-    }
-
-    private FunctionRecord copy() {
-      return new FunctionRecord(
-          namespace,
-          name,
-          type,
-          deterministic,
-          comment,
-          definitions,
-          returnType,
-          returnColumns,
-          version,
-          audit);
-    }
-
-    private static FunctionDefinition[] copyDefinitions(FunctionDefinition[] definitions) {
-      FunctionDefinition[] copied = new FunctionDefinition[definitions.length];
-      for (int i = 0; i < definitions.length; i++) {
-        copied[i] = copyDefinition(definitions[i]);
-      }
-      return copied;
-    }
-
-    private static FunctionDefinition copyDefinition(FunctionDefinition definition) {
-      FunctionParam[] params = definition.parameters();
-      FunctionImpl[] impls = definition.impls();
-      return FunctionDefinitions.of(
-          params == null ? new FunctionParam[0] : Arrays.copyOf(params, params.length),
-          impls == null ? new FunctionImpl[0] : Arrays.copyOf(impls, impls.length));
-    }
-
-    private static FunctionColumn[] copyColumns(FunctionColumn[] columns) {
-      return columns == null ? null : Arrays.copyOf(columns, columns.length);
-    }
-
-    private static int findDefinition(
-        List<FunctionDefinition> definitions, FunctionParam[] params) {
-      for (int i = 0; i < definitions.size(); i++) {
-        if (parametersMatch(definitions.get(i).parameters(), params)) {
-          return i;
-        }
-      }
-      return -1;
-    }
-
-    private static void replaceDefinition(
-        List<FunctionDefinition> definitions,
-        FunctionParam[] params,
-        java.util.function.UnaryOperator<FunctionDefinition> updater) {
-      int idx = findDefinition(definitions, params);
-      if (idx < 0) {
-        throw new IllegalArgumentException("Function definition for parameters not found");
-      }
-      definitions.set(idx, updater.apply(definitions.get(idx)));
-    }
-
-    private static boolean parametersMatch(FunctionParam[] existing, FunctionParam[] target) {
-      if (existing == null && target == null) {
-        return true;
-      }
-      if (existing == null || target == null) {
-        return false;
-      }
-      if (existing.length != target.length) {
-        return false;
-      }
-      for (int i = 0; i < existing.length; i++) {
-        FunctionParam left = existing[i];
-        FunctionParam right = target[i];
-        if (!Objects.equals(left.name(), right.name())
-            || !Objects.equals(left.dataType(), right.dataType())) {
-          return false;
-        }
-      }
-      return true;
-    }
-  }
-
-  private static final class Managed implements Function {
-    private final FunctionRecord record;
-
-    private Managed(FunctionRecord record) {
-      this.record = record;
+    ManagedFunction(FunctionEntity entity) {
+      this.entity = entity;
     }
 
     @Override
     public String name() {
-      return record.name;
+      return extractBaseName(entity.name());
     }
 
     @Override
     public FunctionType functionType() {
-      return record.type;
+      return entity.functionType();
     }
 
     @Override
     public boolean deterministic() {
-      return record.deterministic;
+      return entity.deterministic();
     }
 
     @Override
     public String comment() {
-      return record.comment;
+      return entity.comment();
     }
 
     @Override
     public Type returnType() {
-      return record.type == FunctionType.TABLE ? null : record.returnType;
+      return entity.functionType() == FunctionType.TABLE ? null : entity.returnType();
     }
 
     @Override
     public FunctionColumn[] returnColumns() {
-      if (record.type != FunctionType.TABLE || record.returnColumns == null) {
-        return new FunctionColumn[0];
-      }
-      return Arrays.copyOf(record.returnColumns, record.returnColumns.length);
+      return entity.functionType() == FunctionType.TABLE && entity.returnColumns() != null
+          ? Arrays.copyOf(entity.returnColumns(), entity.returnColumns().length)
+          : new FunctionColumn[0];
     }
 
     @Override
     public FunctionDefinition[] definitions() {
-      return Arrays.copyOf(record.definitions, record.definitions.length);
+      return Arrays.copyOf(entity.definitions(), entity.definitions().length);
     }
 
     @Override
     public int version() {
-      return record.version;
+      return entity.version();
     }
 
     @Override
-    public Audit auditInfo() {
-      return record.audit;
-    }
-  }
-
-  private static final class BasicAudit implements Audit {
-    private final String creator;
-    private final Instant createTime;
-    private final String lastModifier;
-    private final Instant lastModifiedTime;
-
-    private BasicAudit(
-        String creator, Instant createTime, String lastModifier, Instant lastModifiedTime) {
-      this.creator = creator;
-      this.createTime = createTime;
-      this.lastModifier = lastModifier;
-      this.lastModifiedTime = lastModifiedTime;
+    public org.apache.gravitino.Audit auditInfo() {
+      return entity.auditInfo();
     }
 
-    BasicAudit evolve() {
-      Instant now = Instant.now();
-      String modifier = System.getProperty("user.name", "gravitino");
-      return new BasicAudit(creator, createTime, modifier, now);
-    }
-
-    @Override
-    public String creator() {
-      return creator;
-    }
-
-    @Override
-    public Instant createTime() {
-      return createTime;
-    }
-
-    @Override
-    public String lastModifier() {
-      return lastModifier;
-    }
-
-    @Override
-    public Instant lastModifiedTime() {
-      return lastModifiedTime;
+    private static String extractBaseName(String versionedName) {
+      int idx = versionedName.lastIndexOf('#');
+      return idx > 0 ? versionedName.substring(0, idx) : versionedName;
     }
   }
 }
