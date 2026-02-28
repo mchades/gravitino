@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
  * shared by all tree lock instances.
  */
 public class LockManager {
+  // Test coverage comment - to be reverted
   private static final Logger LOG = LoggerFactory.getLogger(LockManager.class);
 
   static final NameIdentifier ROOT = NameIdentifier.of("/");
