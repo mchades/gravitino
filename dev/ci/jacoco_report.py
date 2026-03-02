@@ -177,19 +177,50 @@ def make_file_link(java_path, head_sha, repo_url):
     return f"[{name}]({repo_url}/blob/{head_sha}/{encoded})"
 
 
+def compute_delta(overall_counter, changed_counter):
+    """Compute coverage delta: how much the changed files affect coverage.
+
+    Delta = overall_coverage - base_coverage (coverage without changed files).
+    A negative delta means the changed files have lower coverage than the rest.
+    """
+    if not changed_counter:
+        return None
+    ov = overall_counter or {"missed": 0, "covered": 0}
+    ch = changed_counter or {"missed": 0, "covered": 0}
+    ov_total = ov["covered"] + ov["missed"]
+    ch_total = ch["covered"] + ch["missed"]
+    base_total = ov_total - ch_total
+    if base_total <= 0 or ov_total <= 0:
+        return None
+    base_pct = (ov["covered"] - ch["covered"]) / base_total * 100
+    overall_pct = ov["covered"] / ov_total * 100
+    delta = round(overall_pct - base_pct, 2)
+    if delta == 0.0:
+        return None
+    return delta
+
+
+def format_delta(delta):
+    """Format delta as bold backtick string like madrapps/jacoco-report."""
+    if delta is None:
+        return ""
+    sign = "+" if delta > 0 else ""
+    return f" **`{sign}{delta}%`**"
+
+
 def generate_report(overall, modules, source_files, changed_java_files,
                     min_overall, min_changed, pass_emoji, fail_emoji,
                     head_sha, repo_url):
     """Generate a markdown coverage report matching madrapps/jacoco-report."""
     lines = []
 
-    overall_line_pct = coverage_pct(
-        overall.get("LINE", {"missed": 0, "covered": 0})
-    )
+    overall_line = overall.get("LINE", {"missed": 0, "covered": 0})
+    overall_line_pct = coverage_pct(overall_line)
     overall_emoji = pass_emoji if overall_line_pct >= min_overall else fail_emoji
 
-    # Compute changed files coverage
+    # Compute changed files coverage and group by module
     changed_total = {}
+    changed_by_module = {}
     changed_file_rows = []
     for jf in changed_java_files:
         key = java_path_to_jacoco_key(jf)
@@ -197,10 +228,14 @@ def generate_report(overall, modules, source_files, changed_java_files,
             counters = {k: v for k, v in source_files[key].items()
                         if k != "modules"}
             merge_counters(changed_total, counters)
+            mod = java_path_to_module(jf)
+            if mod not in changed_by_module:
+                changed_by_module[mod] = {}
+            merge_counters(changed_by_module[mod], counters)
             line_c = counters.get("LINE", {"missed": 0, "covered": 0})
             changed_file_rows.append({
                 "file": jf,
-                "module": java_path_to_module(jf),
+                "module": mod,
                 "line_pct": coverage_pct(line_c),
             })
 
@@ -210,11 +245,21 @@ def generate_report(overall, modules, source_files, changed_java_files,
     changed_emoji = (pass_emoji if changed_line_pct >= min_changed
                      else fail_emoji)
 
+    # Overall delta
+    overall_delta = compute_delta(
+        overall_line, changed_total.get("LINE")
+    )
+
+    # Hidden marker for comment update detection
+    lines.append("<!-- coverage-report -->")
+
     # Header table (same style as madrapps/jacoco-report)
     lines.append("### Code Coverage Report")
-    lines.append(f"|Overall Project|{overall_line_pct}%|{overall_emoji}|")
+    delta_str = format_delta(overall_delta)
+    lines.append(
+        f"|Overall Project|{overall_line_pct}%{delta_str}|{overall_emoji}|")
     lines.append("|:-|:-|:-:|")
-    if changed_java_files:
+    if changed_file_rows:
         lines.append(
             f"|Files changed|{changed_line_pct}%|{changed_emoji}|")
     else:
@@ -228,11 +273,16 @@ def generate_report(overall, modules, source_files, changed_java_files,
         lines.append("|:-|:-|:-:|")
         for mod_name in sorted(modules.keys()):
             mod_counters = modules[mod_name]
-            mod_pct = coverage_pct(
-                mod_counters.get("LINE", {"missed": 0, "covered": 0})
-            )
+            mod_line = mod_counters.get("LINE", {"missed": 0, "covered": 0})
+            mod_pct = coverage_pct(mod_line)
             mod_emoji = pass_emoji if mod_pct >= min_overall else fail_emoji
-            lines.append(f"|{mod_name}|{mod_pct}%|{mod_emoji}|")
+            mod_delta = compute_delta(
+                mod_line,
+                changed_by_module.get(mod_name, {}).get("LINE"),
+            )
+            mod_delta_str = format_delta(mod_delta)
+            lines.append(
+                f"|{mod_name}|{mod_pct}%{mod_delta_str}|{mod_emoji}|")
         lines.append("")
 
     # Per-file detail (collapsible)
