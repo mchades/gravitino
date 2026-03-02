@@ -155,6 +155,8 @@ jobs:
         run: |
           python3 dev/ci/jacoco_report.py \
             --base-ref "${{ github.base_ref }}" \
+            --head-sha "${{ github.event.pull_request.head.sha }}" \
+            --repo-url "${{ github.event.pull_request.head.repo.html_url }}" \
             --min-overall 40 \
             --min-changed 60 \
             --output coverage-report.md
